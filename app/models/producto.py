@@ -1,0 +1,21 @@
+# app/models/producto.py
+from dataclasses import dataclass
+from typing import Optional
+
+from .base import BaseModel
+
+
+@dataclass
+class Producto(BaseModel):
+    """
+    Entidad de dominio para un producto de la farmacia.
+    Representa la fila de dbo.productos / public.productos.
+    """
+
+    id: int
+    nombre: str
+    precio_compra: float
+    precio_venta_unidad: float
+    precio_venta_blister: Optional[float]
+    unidades_por_blister: int
+    stock_unidades: int
