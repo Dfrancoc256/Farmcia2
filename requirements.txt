@@ -1,10 +1,8 @@
-PySide6==6.7.2
+streamlit==1.37.0
 pandas==2.2.2
-reportlab==4.1.0
-matplotlib==3.9.0
-psycopg2-binary==2.9.9
-sqlalchemy==2.0.31
-streamlit
 numpy
 pyodbc
 python-dotenv
+sqlalchemy==2.0.31
+matplotlib==3.9.0
+reportlab==4.1.0
