@@ -3,6 +3,7 @@ pandas==2.2.2
 numpy
 pyodbc
 python-dotenv
-sqlalchemy==2.0.31
-matplotlib==3.9.0
 reportlab==4.1.0
+matplotlib==3.9.0
+sqlalchemy==2.0.31
+psycopg2-binary==2.9.10
