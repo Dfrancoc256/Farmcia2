@@ -8,6 +8,7 @@ from app.models.producto import Producto
 class ProductosRepo:
     """
     Acceso a datos de productos (PostgreSQL).
+    Solo hace SQL, TODA la validación está en ProductosService.
     """
 
     # ==========================================================
@@ -227,6 +228,94 @@ class ProductosRepo:
                     ),
                 )
 
+            cn.commit()
+        except Exception:
+            cn.rollback()
+            raise
+        finally:
+            cn.close()
+
+    # ==========================================================
+    #   ACTUALIZAR PRODUCTO COMPLETO (sin stock)
+    # ==========================================================
+    def update_producto(
+        self,
+        pid: int,
+        nombre: str,
+        detalle: Optional[str],
+        precio_compra: float,
+        precio_venta_unidad: float,
+        precio_venta_blister: Optional[float],
+        categoria: Optional[str],
+        unidades_por_blister: Optional[int],
+    ) -> None:
+        """
+        Actualiza los datos principales de un producto en la tabla productos.
+        No realiza validaciones, eso lo hace ProductosService.
+        """
+        cn = conectar_bd()
+        if not cn:
+            raise RuntimeError("No se pudo conectar a la BD.")
+
+        sql = """
+            UPDATE public.productos
+            SET nombre              = %s,
+                detalle             = %s,
+                precio_compra       = %s,
+                precio_venta_unidad = %s,
+                precio_venta_blister= %s,
+                categoria           = %s,
+                unidades_por_blister = %s
+            WHERE id = %s;
+        """
+
+        try:
+            with cn.cursor() as cur:
+                cur.execute(
+                    sql,
+                    (
+                        nombre,
+                        detalle,
+                        float(precio_compra),
+                        float(precio_venta_unidad),
+                        float(precio_venta_blister)
+                        if precio_venta_blister is not None
+                        else None,
+                        categoria,
+                        int(unidades_por_blister)
+                        if unidades_por_blister is not None
+                        else None,
+                        int(pid),
+                    ),
+                )
+            cn.commit()
+        except Exception:
+            cn.rollback()
+            raise
+        finally:
+            cn.close()
+
+    # ==========================================================
+    #   ELIMINAR / DESACTIVAR PRODUCTO
+    # ==========================================================
+    def desactivar_producto(self, pid: int) -> None:
+        """
+        Soft delete: marca activo = FALSE (no borra el registro).
+        """
+        cn = conectar_bd()
+        if not cn:
+            raise RuntimeError("No se pudo conectar a la BD.")
+
+        try:
+            with cn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE public.productos
+                    SET activo = FALSE
+                    WHERE id = %s;
+                    """,
+                    (int(pid),),
+                )
             cn.commit()
         except Exception:
             cn.rollback()

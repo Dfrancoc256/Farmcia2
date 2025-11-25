@@ -8,7 +8,7 @@ from app.ui.web.main_sidebar import render_main_app
 def main():
     # Configuración global de la app
     st.set_page_config(
-        page_title="Farmacia 2.0",
+        page_title="Farmacia la Pablo VI",
         page_icon="💊",
         layout="wide",
     )

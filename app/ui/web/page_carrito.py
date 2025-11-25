@@ -85,9 +85,8 @@ def page_productos_carrito():
             """
             <div class="carrito-card" style="margin-top:0;">
                 <div class="carrito-card-sub">
-                    Desde aquí puedes registrar nuevos productos y gestionar ventas rápidas
-                    usando el carrito. El total se calcula automáticamente con base en los
-                    productos añadidos.
+                    Desde aquí puedes registrar productos, añadirlos al carrito
+                    y editar / desactivar productos existentes.
                 </div>
             </div>
             """,
@@ -95,7 +94,7 @@ def page_productos_carrito():
         )
 
     # =========================
-    #   SESSION STATE
+    #   SESSION STATE BÁSICO
     # =========================
     if "carrito" not in st.session_state:
         st.session_state["carrito"] = []
@@ -104,7 +103,7 @@ def page_productos_carrito():
     id_usuario = user.get("id", 1)
 
     # =========================
-    #   CARGA PRODUCTOS (SERVICE)
+    #   CARGA PRODUCTOS
     # =========================
     try:
         df_prods = ventas_service.get_productos_activos_df()
@@ -123,21 +122,27 @@ def page_productos_carrito():
                 "Blister",
                 "UnidadesBlister",
                 "StockUnidades",
+                "Detalle",
+                "Categoria",
             ]
         )
 
+    # =========================
+    #   LAYOUT PRINCIPAL
+    # =========================
     col_left, col_right = st.columns([2, 1])
 
-    # =========================
-    #   LISTADO + SELECCIÓN
-    # =========================
+    # ======================================================
+    #   IZQUIERDA: LISTADO DE PRODUCTOS (AGGRID)
+    # ======================================================
     with col_left:
         st.markdown(
             """
             <div class="carrito-card">
                 <div class="carrito-card-title">📑 Listado de productos</div>
                 <p class="carrito-card-sub">
-                    Busca y selecciona un producto para añadirlo al carrito de ventas.
+                    Busca y selecciona un producto para añadirlo al carrito
+                    o editarlo.
                 </p>
             </div>
             """,
@@ -150,19 +155,20 @@ def page_productos_carrito():
         if q:
             df_view = df_view[df_view["Nombre"].str.contains(q, case=False, na=False)]
 
+        prod_sel_dict = None
+
         if not df_view.empty:
-            # Configuración de AGGrid
-            gb = GridOptionsBuilder.from_dataframe(
-                df_view[["Nombre", "Compra", "Unidad", "Blister", "StockUnidades"]]
-            )
+            columnas_grid = ["Nombre", "Compra", "Unidad", "Blister", "StockUnidades"]
+
+            gb = GridOptionsBuilder.from_dataframe(df_view[columnas_grid])
             gb.configure_selection("single", use_checkbox=False)
             gb.configure_grid_options(domLayout="normal")
             grid_options = gb.build()
 
             grid_response = AgGrid(
-                df_view[["Nombre", "Compra", "Unidad", "Blister", "StockUnidades"]],
+                df_view[columnas_grid],
                 gridOptions=grid_options,
-                height=320,
+                height=360,
                 update_mode=GridUpdateMode.SELECTION_CHANGED,
                 allow_unsafe_jscode=True,
                 theme="alpine",
@@ -170,109 +176,109 @@ def page_productos_carrito():
 
             selected_rows = grid_response["selected_rows"]
 
-            prod_sel = None
-            selected_name = ""
-
-            # Normalizamos la selección
-            if isinstance(selected_rows, list):
-                if selected_rows:
-                    selected_name = selected_rows[0]["Nombre"]
-            elif isinstance(selected_rows, pd.DataFrame):
-                if not selected_rows.empty:
-                    selected_name = selected_rows.iloc[0]["Nombre"]
-
-            if selected_name:
-                # Buscamos en df_prods para traer todas las columnas (incluyendo id)
+            if isinstance(selected_rows, list) and selected_rows:
+                selected_name = selected_rows[0].get("Nombre")
+                if selected_name:
+                    matches = df_prods[df_prods["Nombre"] == selected_name]
+                    if not matches.empty:
+                        prod_sel_dict = matches.iloc[0].to_dict()
+            elif isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
+                selected_name = selected_rows.iloc[0].get("Nombre")
                 matches = df_prods[df_prods["Nombre"] == selected_name]
                 if not matches.empty:
-                    prod_sel = matches.iloc[0]
-                else:
-                    # Fallback al primer registro del df_view
-                    prod_sel = df_view.iloc[0]
-                    selected_name = prod_sel["Nombre"]
-            else:
-                # Si no seleccionó nada, tomamos el primero del df_view (respeta el filtro)
-                prod_sel = df_view.iloc[0]
-                selected_name = prod_sel["Nombre"]
+                    prod_sel_dict = matches.iloc[0].to_dict()
+
+            if prod_sel_dict is not None:
+                st.session_state["prod_selected_full"] = prod_sel_dict
         else:
-            prod_sel = None
-            selected_name = ""
             st.info(
                 "No hay productos para mostrar con el filtro actual. "
                 "Limpia el buscador o registra un producto nuevo."
             )
+            st.session_state["prod_selected_full"] = None
 
-    # =========================
-    #   FORMULARIOS (TABS)
-    # =========================
+    # Objeto seleccionado completo (para las pestañas de la derecha)
+    prod_sel = st.session_state.get("prod_selected_full")
+
+    # ======================================================
+    #   DERECHA: PESTAÑAS (REGISTRAR / CARRITO / EDITAR)
+    # ======================================================
     with col_right:
-        tab_reg, tab_cart = st.tabs(["➕ Registrar producto", "🛒 Añadir al carrito"])
+        st.markdown(
+            """
+            <div class="carrito-card">
+                <div class="carrito-card-title">Producto</div>
+                <p class="carrito-card-sub">
+                    Usa las pestañas para registrar productos, añadir al carrito
+                    o editar / desactivar el producto seleccionado.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        # ---------- TAB 1: REGISTRAR PRODUCTO ----------
+        tab_reg, tab_cart, tab_edit = st.tabs(
+            ["➕ Registrar producto", "🛒 Añadir al carrito", "✏️ Editar / eliminar"]
+        )
+
+        # ==================================================
+        #   TAB 1: REGISTRAR PRODUCTO (campos vacíos)
+        # ==================================================
         with tab_reg:
-            st.markdown(
-                """
-                <div class="carrito-card">
-                    <div class="carrito-card-title">Nuevo producto</div>
-                    <p class="carrito-card-sub">
-                        Registra un producto nuevo con precios y stock para habilitarlo en ventas.
-                    </p>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            with st.form("form_nuevo_producto"):
-                nombre = st.text_input("Nombre del producto")
-                detalle = st.text_input("Detalle / descripción", value="")
-                categoria = st.text_input(
+            with st.form("form_reg_producto"):
+                nombre_reg = st.text_input("Nombre del producto", key="reg_nombre")
+                detalle_reg = st.text_input(
+                    "Detalle / descripción", key="reg_detalle"
+                )
+                categoria_reg = st.text_input(
                     "Categoría / palabras clave",
+                    key="reg_categoria",
                     help="Ej: dolor, fiebre, antibiótico… (sirve para el buscador).",
                 )
 
-                precio_compra = st.number_input(
-                    "Precio compra (Q)", min_value=0.0, step=0.01, value=0.0
+                precio_compra_reg = st.number_input(
+                    "Precio compra (Q)",
+                    min_value=0.0,
+                    step=0.01,
+                    key="reg_precio_compra",
                 )
-                precio_unidad = st.number_input(
-                    "Precio venta unidad (Q)", min_value=0.0, step=0.01, value=0.0
+                precio_unidad_reg = st.number_input(
+                    "Precio venta unidad (Q)",
+                    min_value=0.0,
+                    step=0.01,
+                    key="reg_precio_unidad",
                 )
-                precio_blister = st.number_input(
+                precio_blister_reg = st.number_input(
                     "Precio venta blister (Q)",
                     min_value=0.0,
                     step=0.01,
-                    value=0.0,
+                    key="reg_precio_blister",
                     help="Si el producto no se vende por blister, puedes dejarlo en 0.",
                 )
-
-                stock_unidades = st.number_input(
-                    "Stock inicial (unidades)", min_value=0, step=1, value=0
-                )
-                unidades_por_blister = st.number_input(
+                unidades_blister_reg = st.number_input(
                     "Unidades por blister",
                     min_value=0,
                     step=1,
-                    value=0,
+                    key="reg_unidades_blister",
                     help="0 si no aplica blister.",
                 )
 
-                submitted_prod = st.form_submit_button("Guardar producto")
+                submitted_reg = st.form_submit_button("Guardar producto", type="primary")
 
-            if submitted_prod:
+            if submitted_reg:
                 try:
                     nuevo_id = productos_service.crear_producto(
-                        nombre=nombre,
-                        detalle=detalle or None,
-                        precio_compra=precio_compra,
-                        precio_venta_unidad=precio_unidad,
+                        nombre=nombre_reg,
+                        detalle=detalle_reg or None,
+                        precio_compra=precio_compra_reg,
+                        precio_venta_unidad=precio_unidad_reg,
                         precio_venta_blister=(
-                            precio_blister if precio_blister > 0 else None
+                            precio_blister_reg if precio_blister_reg > 0 else None
                         ),
-                        stock_unidades=stock_unidades,
-                        categoria=categoria or None,
+                        stock_unidades=0,
+                        categoria=categoria_reg or None,
                         unidades_por_blister=(
-                            unidades_por_blister
-                            if unidades_por_blister > 0
-                            else None
+                            unidades_blister_reg if unidades_blister_reg > 0 else None
                         ),
                     )
                     st.success(f"✅ Producto creado con id {nuevo_id}.")
@@ -280,14 +286,16 @@ def page_productos_carrito():
                 except Exception as e:
                     st.error(f"❌ Error al crear producto: {e}")
 
-        # ---------- TAB 2: AÑADIR AL CARRITO ----------
+        # ==================================================
+        #   TAB 2: AÑADIR AL CARRITO
+        # ==================================================
         with tab_cart:
             st.markdown(
                 """
                 <div class="carrito-card">
                     <div class="carrito-card-title">Añadir al carrito</div>
                     <p class="carrito-card-sub">
-                        Selecciona un producto del listado, define tipo de venta y cantidad,
+                        Selecciona un producto del listado, define tipo de venta y cantidad
                         y agrégalo al carrito actual.
                     </p>
                 </div>
@@ -295,31 +303,24 @@ def page_productos_carrito():
                 unsafe_allow_html=True,
             )
 
-            if prod_sel is None:
-                st.info("Primero registra o selecciona un producto para añadir al carrito.")
+            if not prod_sel:
+                st.info(
+                    "Selecciona un producto en la tabla de la izquierda para añadirlo al carrito."
+                )
             else:
                 st.text_input(
                     "Producto seleccionado",
-                    value=selected_name,
+                    value=prod_sel.get("Nombre", ""),
                     disabled=True,
                 )
 
                 tipo = st.selectbox("Tipo de venta", ["unidad", "blister"])
-                cantidad = st.number_input(
-                    "Cantidad",
-                    min_value=1,
-                    value=1,
-                    step=1,
-                )
+                cantidad = st.number_input("Cantidad", min_value=1, value=1, step=1)
                 fecha = st.date_input("Fecha", value=date.today())
 
-                precio_unidad = float(prod_sel["Unidad"] or 0)
-                precio_blister = (
-                    float(prod_sel["Blister"] or 0)
-                    if prod_sel["Blister"] is not None
-                    else 0.0
-                )
-                unidades_por_blister = int(prod_sel["UnidadesBlister"] or 1)
+                precio_unidad = float(prod_sel.get("Unidad", 0) or 0)
+                precio_blister = float(prod_sel.get("Blister", 0) or 0)
+                unidades_por_blister = int(prod_sel.get("UnidadesBlister", 1) or 1)
 
                 if tipo == "unidad":
                     price = precio_unidad
@@ -338,14 +339,10 @@ def page_productos_carrito():
                     step=0.01,
                 )
 
-                if st.button(
-                    "Añadir al carrito",
-                    type="primary",
-                    use_container_width=True,
-                ):
+                if st.button("Añadir al carrito", use_container_width=True):
                     st.session_state["carrito"].append(
                         {
-                            "producto_id": int(prod_sel["id"]),  # 👈 clave usada por CarritoItem
+                            "producto_id": int(prod_sel["id"]),
                             "nombre": prod_sel["Nombre"],
                             "tipo": tipo,
                             "cantidad": int(cantidad),
@@ -355,9 +352,131 @@ def page_productos_carrito():
                     )
                     st.success("✅ Producto añadido al carrito.")
 
-    # =========================
-    #   TABLA CARRITO
-    # =========================
+        # ==================================================
+        #   TAB 3: EDITAR / ELIMINAR
+        # ==================================================
+        with tab_edit:
+            # Sincronizamos los campos edit_* cada vez que cambia la selección
+            if prod_sel:
+                current_id = int(prod_sel.get("id"))
+                last_id = st.session_state.get("edit_id")
+                if current_id != last_id:
+                    st.session_state["edit_id"] = current_id
+                    st.session_state["edit_nombre"] = prod_sel.get("Nombre", "") or ""
+                    st.session_state["edit_detalle"] = prod_sel.get("Detalle", "") or ""
+                    st.session_state["edit_categoria"] = (
+                        prod_sel.get("Categoria", "") or ""
+                    )
+                    st.session_state["edit_precio_compra"] = float(
+                        prod_sel.get("Compra", 0.0) or 0.0
+                    )
+                    st.session_state["edit_precio_unidad"] = float(
+                        prod_sel.get("Unidad", 0.0) or 0.0
+                    )
+                    st.session_state["edit_precio_blister"] = float(
+                        prod_sel.get("Blister", 0.0) or 0.0
+                    )
+                    st.session_state["edit_unidades_blister"] = int(
+                        prod_sel.get("UnidadesBlister", 0) or 0
+                    )
+
+            with st.form("form_edit_producto"):
+                nombre_edit = st.text_input(
+                    "Nombre del producto", key="edit_nombre"
+                )
+                detalle_edit = st.text_input(
+                    "Detalle / descripción", key="edit_detalle"
+                )
+                categoria_edit = st.text_input(
+                    "Categoría / palabras clave",
+                    key="edit_categoria",
+                    help="Ej: dolor, fiebre, antibiótico… (sirve para el buscador).",
+                )
+
+                precio_compra_edit = st.number_input(
+                    "Precio de compra (Q)",
+                    min_value=0.0,
+                    step=0.01,
+                    key="edit_precio_compra",
+                )
+                precio_unidad_edit = st.number_input(
+                    "Precio venta unidad (Q)",
+                    min_value=0.0,
+                    step=0.01,
+                    key="edit_precio_unidad",
+                )
+                precio_blister_edit = st.number_input(
+                    "Precio de venta blister (Q)",
+                    min_value=0.0,
+                    step=0.01,
+                    key="edit_precio_blister",
+                    help="Si el producto no se vende por blister, puedes dejarlo en 0.",
+                )
+                unidades_blister_edit = st.number_input(
+                    "Unidades por blister",
+                    min_value=0,
+                    step=1,
+                    key="edit_unidades_blister",
+                    help="0 si no aplica blister.",
+                )
+
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
+                    submitted_edit = st.form_submit_button(
+                        "Guardar cambios",
+                        type="primary",
+                        disabled=not prod_sel,
+                    )
+                with col_e2:
+                    desactivar_click = st.form_submit_button(
+                        "Desactivar producto", disabled=not prod_sel
+                    )
+
+            pid_edicion = st.session_state.get("edit_id")
+
+            if submitted_edit:
+                if not prod_sel or not pid_edicion:
+                    st.warning("Selecciona un producto en la tabla para editarlo.")
+                else:
+                    try:
+                        productos_service.update_producto_completo(
+                            pid=pid_edicion,
+                            nombre=nombre_edit,
+                            detalle=detalle_edit or None,
+                            categoria=categoria_edit or None,
+                            precio_compra=precio_compra_edit,
+                            precio_unidad=precio_unidad_edit,
+                            precio_blister=(
+                                precio_blister_edit
+                                if precio_blister_edit > 0
+                                else None
+                            ),
+                            unidades_blister=(
+                                unidades_blister_edit
+                                if unidades_blister_edit > 0
+                                else None
+                            ),
+                        )
+                        st.success("✅ Producto actualizado correctamente.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error al guardar producto: {e}")
+
+            if desactivar_click:
+                if not prod_sel or not pid_edicion:
+                    st.warning("Selecciona un producto en la tabla para desactivarlo.")
+                else:
+                    try:
+                        productos_service.eliminar_producto(pid_edicion)
+                    except Exception as e:
+                        st.error(f"❌ Error al desactivar producto: {e}")
+                    else:
+                        st.success("✅ Producto desactivado correctamente.")
+                        st.rerun()
+
+    # ==================================================
+    #   SECCIÓN CARRITO (igual que antes)
+    # ==================================================
     st.markdown("---")
     st.markdown(
         """
@@ -389,7 +508,6 @@ def page_productos_carrito():
 
         col_a, col_b = st.columns(2)
 
-        # Eliminar línea del carrito
         with col_a:
             idx_del = st.number_input(
                 "Índice a eliminar (1..N)",
@@ -403,7 +521,6 @@ def page_productos_carrito():
                 st.session_state["carrito"] = carrito
                 st.rerun()
 
-        # Registrar venta(s)
         with col_b:
             if st.button("Registrar venta(s)", type="primary"):
                 try:

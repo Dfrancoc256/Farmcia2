@@ -58,15 +58,6 @@ class ProductosService:
     ) -> int:
         """
         Valida datos y delega al repo la creación del producto.
-        Se alinea con la tabla 'productos' en PostgreSQL:
-        - nombre
-        - detalle
-        - precio_compra
-        - precio_venta_unidad
-        - precio_venta_blister
-        - unidades_por_blister
-        - stock_unidades
-        - categoria
         """
 
         nombre = (nombre or "").strip()
@@ -121,13 +112,6 @@ class ProductosService:
         precio_unidad: float,
         precio_blister: Optional[float] = None,
     ) -> None:
-        """
-        Valida y delega a repo.update_precios().
-        Se asume que el repositorio actualiza:
-        - precio_compra
-        - precio_venta_unidad
-        - precio_venta_blister
-        """
         if precio_compra < 0:
             raise ValueError("Precio de compra inválido (no puede ser negativo).")
 
@@ -149,13 +133,6 @@ class ProductosService:
         motivo: str = "",
         referencia: Optional[str] = None,
     ) -> None:
-        """
-        Lógica para ajustar inventario (entrada/salida) y registrar
-        el movimiento en movimientos_inventario.
-
-        - delta > 0  -> entrada
-        - delta < 0  -> salida
-        """
         if delta == 0:
             raise ValueError("El ajuste de stock no puede ser 0.")
 
@@ -163,3 +140,100 @@ class ProductosService:
         referencia = (referencia or "").strip() or None
 
         self.repo.update_stock(pid, delta, motivo, referencia)
+
+    # ==========================================================
+    #   ACTUALIZAR PRODUCTO COMPLETO (sin stock)
+    # ==========================================================
+    def actualizar_producto(
+        self,
+        pid: int,
+        nombre: str,
+        detalle: Optional[str],
+        precio_compra: float,
+        precio_venta_unidad: float,
+        precio_venta_blister: Optional[float],
+        categoria: Optional[str],
+        unidades_por_blister: Optional[int],
+    ) -> None:
+        """
+        Actualiza los datos principales de un producto
+        (sin tocar stock_unidades).
+        """
+        nombre = (nombre or "").strip()
+        detalle = (detalle or "").strip() or None
+        categoria = (categoria or "").strip() or None
+
+        if not nombre:
+            raise ValueError("El nombre del producto no puede estar vacío.")
+
+        if precio_compra < 0:
+            raise ValueError("El precio de compra no puede ser negativo.")
+
+        if precio_venta_unidad <= 0:
+            raise ValueError("El precio de venta por unidad debe ser mayor a 0.")
+
+        if precio_venta_blister is not None:
+            if precio_venta_blister <= 0:
+                raise ValueError("El precio por blister debe ser mayor a 0.")
+            if not unidades_por_blister or unidades_por_blister <= 0:
+                raise ValueError(
+                    "Si defines un precio por blister, debes indicar "
+                    "unidades_por_blister mayor a 0."
+                )
+
+        if unidades_por_blister is not None and unidades_por_blister < 0:
+            raise ValueError("Las unidades por blister no pueden ser negativas.")
+
+        self.repo.update_producto(
+            pid=pid,
+            nombre=nombre,
+            detalle=detalle,
+            precio_compra=precio_compra,
+            precio_venta_unidad=precio_venta_unidad,
+            precio_venta_blister=precio_venta_blister,
+            categoria=categoria,
+            unidades_por_blister=unidades_por_blister,
+        )
+
+    # 👉 ALIAS compatible con page_carrito.py
+    def update_producto_completo(
+        self,
+        pid: int,
+        nombre: str,
+        detalle: Optional[str],
+        precio_compra: float,
+        precio_unidad: float,
+        precio_blister: Optional[float],
+        categoria: Optional[str],
+        unidades_blister: Optional[int] = None,
+        unidades_por_blister: Optional[int] = None,
+    ) -> None:
+        """
+        Alias para mantener compatibilidad con la llamada que hace page_carrito.py,
+        que usa los nombres 'precio_unidad', 'precio_blister' y 'unidades_blister'.
+        """
+        # Normalizamos el nombre del parámetro
+        if unidades_por_blister is None:
+            unidades_por_blister = unidades_blister
+
+        self.actualizar_producto(
+            pid=pid,
+            nombre=nombre,
+            detalle=detalle,
+            precio_compra=precio_compra,
+            precio_venta_unidad=precio_unidad,
+            precio_venta_blister=precio_blister,
+            categoria=categoria,
+            unidades_por_blister=unidades_por_blister,
+        )
+
+    # ==========================================================
+    #   ELIMINAR / DESACTIVAR PRODUCTO
+    # ==========================================================
+    def eliminar_producto(self, pid: int) -> None:
+        """Soft delete: marca activo = FALSE."""
+        self.repo.desactivar_producto(pid)
+
+    # Alias para que funcione productos_service.desactivar_producto(...)
+    def desactivar_producto(self, pid: int) -> None:
+        self.eliminar_producto(pid)
