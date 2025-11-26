@@ -1,5 +1,4 @@
 # app/repos/users_repo.py
-
 from app.core.database import conectar_bd
 from app.core.auth import hash_password
 
@@ -15,8 +14,6 @@ def create_user(username: str, password: str, rol: str = "Administrador") -> int
 
     try:
         cn = conectar_bd()
-        if not cn:
-            raise RuntimeError("No se pudo conectar con la BD.")
 
         pwd_hash = hash_password(password)
 
@@ -47,7 +44,7 @@ def create_user(username: str, password: str, rol: str = "Administrador") -> int
     except Exception as e:
         if cn:
             cn.rollback()
-        # Envolvemos para que el mensaje salga claro
+        # Propagamos el error con contexto
         raise RuntimeError(f"❌ Error en create_user: {e}")
 
     finally:
@@ -58,14 +55,11 @@ def create_user(username: str, password: str, rol: str = "Administrador") -> int
 def get_user_by_username(username: str):
     """
     Devuelve un dict con los datos del usuario o None si no existe.
-    PostgreSQL usa %s y devuelve booleanos True/False.
     """
     cn = None
 
     try:
         cn = conectar_bd()
-        if not cn:
-            raise RuntimeError("No se pudo conectar con la BD.")
 
         with cn.cursor() as cur:
             cur.execute(
