@@ -1,40 +1,57 @@
 # app/core/database.py
+import os
 import psycopg2
 
 
 def conectar_bd():
     """
-    Devuelve una conexión a PostgreSQL (Supabase) o None si falla.
-    Ajusta host, puerto, user y password según tu proyecto.
+    Devuelve una conexión a PostgreSQL (Supabase) usando variables de entorno.
+
+    En la nube (Streamlit Cloud):
+      - Las variables vienen de Secrets.
+    En local:
+      - Las puede poner el script (os.environ) o un .env cargado a mano.
     """
+
+    host = os.getenv("DB_HOST")
+    port = os.getenv("DB_PORT")
+    dbname = os.getenv("DB_NAME")
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASS")
+
+    # Esto se verá en los logs de Streamlit Cloud (Manage app -> View logs)
+    print(f"DEBUG DB_HOST={host}, DB_PORT={port}, DB_NAME={dbname}, DB_USER={user}", flush=True)
+
     try:
         conexion = psycopg2.connect(
-            host="db.qiuhnugcvouffmrzclln.supabase.co",  # host de tu Supabase
-            port=6543,                                   # puerto del Session Pooler
-            dbname="postgres",                           # nombre de la BD (por defecto)
-            user="postgres",                             # usuario por defecto
-            password="6789juanpatito.",                 # ⚠ pon aquí tu password real
-            sslmode="require",                           # Supabase exige SSL
+            host=host,
+            port=port,
+            dbname=dbname,
+            user=user,
+            password=password,
+            sslmode="require",  # Supabase exige SSL
         )
-        print("✅ Conexión exitosa a PostgreSQL (Supabase)")
+        print("✅ Conexión exitosa a PostgreSQL (Supabase)", flush=True)
         return conexion
+
     except Exception as e:
-        print("❌ Error al conectar a PostgreSQL:", e)
+        print("❌ Error al conectar a PostgreSQL:", e, flush=True)
         return None
 
 
-# Test rápido
+# Test rápido local (opcional)
 if __name__ == "__main__":
     cn = conectar_bd()
     if cn:
         cur = cn.cursor()
-        # equivalente a "SELECT TOP 5 name FROM sys.tables" en SQL Server
-        cur.execute("""
+        cur.execute(
+            """
             SELECT table_name
             FROM information_schema.tables
             WHERE table_schema = 'public'
             LIMIT 5;
-        """)
+            """
+        )
         print("Tablas:", [r[0] for r in cur.fetchall()])
         cur.close()
         cn.close()
