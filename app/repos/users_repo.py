@@ -1,3 +1,5 @@
+# app/repos/users_repo.py
+
 from app.core.database import conectar_bd
 from app.core.auth import hash_password
 
@@ -5,12 +7,16 @@ from app.core.auth import hash_password
 def create_user(username: str, password: str, rol: str = "Administrador") -> int:
     """
     Crea un usuario en public.usuarios y devuelve el ID generado.
+    PostgreSQL:
+      - Usa RETURNING id.
+      - Usa TRUE/FALSE para booleanos.
     """
+    cn = None
 
     try:
         cn = conectar_bd()
         if not cn:
-            raise RuntimeError("❌ Error: conectar_bd() devolvió None.")
+            raise RuntimeError("No se pudo conectar con la BD.")
 
         pwd_hash = hash_password(password)
 
@@ -31,7 +37,7 @@ def create_user(username: str, password: str, rol: str = "Administrador") -> int
 
             row = cur.fetchone()
             if not row:
-                raise RuntimeError("❌ Error: no se pudo obtener el ID del nuevo usuario.")
+                raise RuntimeError("No se pudo obtener el ID del nuevo usuario.")
 
             user_id = int(row[0])
 
@@ -39,24 +45,27 @@ def create_user(username: str, password: str, rol: str = "Administrador") -> int
         return user_id
 
     except Exception as e:
-        if "cn" in locals():
+        if cn:
             cn.rollback()
+        # Envolvemos para que el mensaje salga claro
         raise RuntimeError(f"❌ Error en create_user: {e}")
 
     finally:
-        if "cn" in locals():
+        if cn:
             cn.close()
 
 
 def get_user_by_username(username: str):
     """
     Devuelve un dict con los datos del usuario o None si no existe.
+    PostgreSQL usa %s y devuelve booleanos True/False.
     """
+    cn = None
 
     try:
         cn = conectar_bd()
         if not cn:
-            raise RuntimeError("❌ Error: conectar_bd() devolvió None.")
+            raise RuntimeError("No se pudo conectar con la BD.")
 
         with cn.cursor() as cur:
             cur.execute(
@@ -86,10 +95,6 @@ def get_user_by_username(username: str):
             "activo": bool(row[4]),
         }
 
-    except Exception as e:
-        # 🔥 Aquí YA mostramos el error real
-        raise RuntimeError(f"❌ Error en get_user_by_username: {e}")
-
     finally:
-        if "cn" in locals():
+        if cn:
             cn.close()
