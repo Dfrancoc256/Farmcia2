@@ -1,4 +1,3 @@
-# app/models/producto.py
 from dataclasses import dataclass
 from typing import Optional
 
@@ -9,7 +8,7 @@ from .base import BaseModel
 class Producto(BaseModel):
     """
     Entidad de dominio para un producto de la farmacia.
-    Representa la fila de dbo.productos / public.productos.
+    Representa la fila de public.productos.
     """
 
     id: int
@@ -19,3 +18,4 @@ class Producto(BaseModel):
     precio_venta_blister: Optional[float]
     unidades_por_blister: int
     stock_unidades: int
+    stock_actual: int   # <- nombre corregido

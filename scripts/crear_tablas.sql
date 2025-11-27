@@ -30,6 +30,7 @@ CREATE TABLE public.productos (
     precio_venta_blister NUMERIC(10,2),
     unidades_por_blister INT,
     stock_unidades INT NOT NULL DEFAULT 0,
+    stock_actual INT NOT NULL DEFAULT 0,
     categoria TEXT,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     fecha_registro TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -112,87 +113,3 @@ CREATE TABLE public.movimientos_inventario (
 );
 
 
--- ========================================================
--- 🧩 INSERTAR USUARIO ADMIN
--- ========================================================
-INSERT INTO public.usuarios (username, password_hash, rol, activo)
-VALUES ('admin', 'admin', 'Administrador', TRUE);
-
-
--- ========================================================
--- 🧩 INSERTAR PRODUCTOS
--- ========================================================
-INSERT INTO public.productos (nombre, detalle, precio_compra, precio_venta_unidad,
-                           precio_venta_blister, unidades_por_blister, stock_unidades, categoria)
-VALUES
-('Ibuprofeno 400mg', 'Caja x 20 tabletas', 8.00, 1.00, 15.00, 20, 200, 'dolor'),
-('Panadol Ultra', 'Blister x 10 tabletas', 7.00, 1.00, 9.00, 10, 150, 'dolor'),
-('Amoxicilina 500mg', 'Blister x 12 caps', 12.00, 2.00, 20.00, 12, 120, 'antibiótico'),
-('Loratadina 10mg', 'Tabletas', 3.00, 0.75, 6.50, 10, 180, 'alergia'),
-('Suero Oral 500ml', 'Botella', 4.00, 6.00, NULL, NULL, 90, 'rehidratación'),
-('Jarabe Antigripal', 'Frasco 120ml', 10.00, 15.00, NULL, NULL, 50, 'resfrío');
-
-
--- ========================================================
--- 🧩 VENTAS EJEMPLO
--- ========================================================
-INSERT INTO public.ventas (total, tipo_pago, observacion, id_usuario)
-VALUES
-(20.00, 'efectivo', 'Venta ejemplo', 1),
-(35.00, 'efectivo', 'Venta ejemplo 2', 1);
-
--- Venta 1
-INSERT INTO public.detalle_ventas (id_venta, id_producto, tipo, cantidad, precio_unitario,
-                                  unidades_descuento, costo_unitario_compra)
-VALUES
-(1, 1, 'unidad', 5, 1.00, 5, 8.00/20),
-(1, 5, 'unidad', 1, 6.00, 1, 4.00);
-
--- Venta 2
-INSERT INTO public.detalle_ventas (id_venta, id_producto, tipo, cantidad, precio_unitario,
-                                  unidades_descuento, costo_unitario_compra)
-VALUES
-(2, 3, 'blister', 1, 20.00, 12, 12.00/12),
-(2, 4, 'unidad', 3, 0.75, 3, 3.00/10);
-
-
--- ========================================================
--- 🧩 DESCONTAR STOCK
--- ========================================================
-UPDATE public.productos p
-SET stock_unidades = p.stock_unidades - dv.unidades_descuento
-FROM public.detalle_ventas dv
-WHERE p.id = dv.id_producto;
-
-
--- ========================================================
--- 🧩 MOV INVENTARIO AUTOMÁTICO
--- ========================================================
-INSERT INTO public.movimientos_inventario (id_producto, tipo, cantidad, referencia, motivo, stock_resultante)
-SELECT
-    dv.id_producto,
-    'venta',
-    dv.unidades_descuento,
-    'V-' || dv.id_venta,
-    'Descuento por venta automática',
-    p.stock_unidades
-FROM public.detalle_ventas dv
-JOIN public.productos p ON p.id = dv.id_producto;
-
-
--- ========================================================
--- 🧩 FIADOS EJEMPLO
--- ========================================================
-INSERT INTO public.fiados (id_producto, nombre_cliente, telefono, producto, cantidad, monto, estado)
-VALUES
-(1, 'Juan Pérez', '5555-1111', 'Ibuprofeno 400mg', 2, 2.00, 'Pendiente'),
-(3, 'María López', '5511-3344', 'Amoxicilina 500mg', 1, 2.00, 'Pagado');
-
--- ========================================================
--- 🧩 GASTOS EJEMPLO
--- ========================================================
-INSERT INTO public.gastos (descripcion, monto, categoria)
-VALUES
-('Compra de sueros', 150.00, 'mercadería'),
-('Pago de luz', 220.00, 'servicios'),
-('Publicidad en Facebook', 80.00, 'marketing');

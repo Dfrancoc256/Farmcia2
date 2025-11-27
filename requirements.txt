@@ -1,10 +1,8 @@
 streamlit==1.37.0
 pandas==2.2.2
 numpy
-pyodbc
-python-dotenv
-reportlab==4.1.0
 matplotlib==3.9.0
+psycopg2-binary==2.9.9
 sqlalchemy==2.0.31
-psycopg2-binary==2.9.10
+python-dotenv
 streamlit-aggrid

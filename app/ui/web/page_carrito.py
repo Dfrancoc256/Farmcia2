@@ -149,7 +149,13 @@ def page_productos_carrito():
             unsafe_allow_html=True,
         )
 
-        q = st.text_input("Buscar producto", "")
+        # Buscar + refrescar
+        col_buscar, col_refresh = st.columns([3, 1])
+        with col_buscar:
+            q = st.text_input("Buscar producto", "")
+        with col_refresh:
+            if st.button("🔄 Actualizar listado"):
+                st.rerun()
 
         df_view = df_prods.copy()
         if q:
@@ -263,6 +269,14 @@ def page_productos_carrito():
                     help="0 si no aplica blister.",
                 )
 
+                stock_inicial_reg = st.number_input(
+                    "Stock inicial (unidades)",
+                    min_value=0,
+                    step=1,
+                    key="reg_stock_inicial",
+                    help="Cantidad disponible al registrar el producto.",
+                )
+
                 submitted_reg = st.form_submit_button("Guardar producto", type="primary")
 
             if submitted_reg:
@@ -275,16 +289,18 @@ def page_productos_carrito():
                         precio_venta_blister=(
                             precio_blister_reg if precio_blister_reg > 0 else None
                         ),
-                        stock_unidades=0,
+                        stock_unidades=stock_inicial_reg,
                         categoria=categoria_reg or None,
                         unidades_por_blister=(
                             unidades_blister_reg if unidades_blister_reg > 0 else None
                         ),
                     )
                     st.success(f"✅ Producto creado con id {nuevo_id}.")
-                    st.rerun()
                 except Exception as e:
                     st.error(f"❌ Error al crear producto: {e}")
+                else:
+                    # Solo si todo salió bien, recargamos la página
+                    st.rerun()
 
         # ==================================================
         #   TAB 2: AÑADIR AL CARRITO
@@ -458,9 +474,10 @@ def page_productos_carrito():
                             ),
                         )
                         st.success("✅ Producto actualizado correctamente.")
-                        st.rerun()
                     except Exception as e:
                         st.error(f"❌ Error al guardar producto: {e}")
+                    else:
+                        st.rerun()
 
             if desactivar_click:
                 if not prod_sel or not pid_edicion:
@@ -475,7 +492,7 @@ def page_productos_carrito():
                         st.rerun()
 
     # ==================================================
-    #   SECCIÓN CARRITO (igual que antes)
+    #   SECCIÓN CARRITO (CARRITO + VUELTO + RESUMEN)
     # ==================================================
     st.markdown("---")
     st.markdown(
@@ -503,11 +520,32 @@ def page_productos_carrito():
 
         st.dataframe(df_cart_disp, use_container_width=True, hide_index=True)
 
+        # Total del carrito
         total = sum(i["monto"] for i in carrito)
         st.write(f"**Total:** Q {total:,.2f}")
 
+        # Monto pagado y cálculo de cambio
+        monto_pagado = st.number_input(
+            "Monto pagado por el cliente (Q)",
+            min_value=0.0,
+            step=0.01,
+            key="monto_pagado",
+        )
+
+        cambio = None
+        if monto_pagado > 0:
+            if monto_pagado >= total:
+                cambio = monto_pagado - total
+                st.success(f"💵 Cambio a entregar: **Q {cambio:,.2f}**")
+            else:
+                st.warning(
+                    "El monto pagado es menor que el total. "
+                    "No se podrá registrar la venta hasta corregirlo."
+                )
+
         col_a, col_b = st.columns(2)
 
+        # Eliminar ítem del carrito
         with col_a:
             idx_del = st.number_input(
                 "Índice a eliminar (1..N)",
@@ -521,18 +559,42 @@ def page_productos_carrito():
                 st.session_state["carrito"] = carrito
                 st.rerun()
 
+        # Registrar venta(s)
         with col_b:
             if st.button("Registrar venta(s)", type="primary"):
-                try:
-                    ventas_service.registrar_ventas_desde_carrito(
-                        carrito,
-                        id_usuario,
+                # Validamos que el pago cubra el total
+                if monto_pagado < total:
+                    st.error(
+                        "❌ El monto pagado no puede ser menor que el total de la venta."
                     )
-                except Exception as e:
-                    st.error(f"❌ Ocurrió un error al registrar la venta: {e}")
                 else:
-                    st.session_state["carrito"] = []
-                    st.success("✅ Venta(s) registrada(s) correctamente.")
-                    st.rerun()
+                    try:
+                        ventas_service.registrar_ventas_desde_carrito(
+                            carrito,
+                            id_usuario,
+                        )
+                    except Exception as e:
+                        st.error(f"❌ Ocurrió un error al registrar la venta: {e}")
+                    else:
+                        # Limpiamos carrito
+                        st.session_state["carrito"] = []
+
+                        # Asegurar que tengamos cambio calculado
+                        if cambio is None:
+                            cambio = max(monto_pagado - total, 0.0)
+
+                        # Mensaje de resumen
+                        st.success("✅ Venta(s) registrada(s) correctamente.")
+                        st.info(
+                            f"**Resumen de la venta:**  \n"
+                            f"- Total: **Q {total:,.2f}**  \n"
+                            f"- Pagó: **Q {monto_pagado:,.2f}**  \n"
+                            f"- Cambio entregado: **Q {cambio:,.2f}**"
+                        )
+
+                        # Botón para seguir vendiendo
+                        if st.button("➕ Agregar más productos"):
+                            st.rerun()
     else:
         st.info("El carrito está vacío.")
+

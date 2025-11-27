@@ -33,12 +33,14 @@ class ProductosRepo:
                         precio_venta_unidad::double precision  AS unidad,
                         precio_venta_blister::double precision AS blister,
                         COALESCE(unidades_por_blister, 1)      AS unidades_por_blister,
-                        COALESCE(stock_unidades, 0)            AS stock_unidades
+                        COALESCE(stock_unidades, 0)            AS stock_unidades,
+                        COALESCE(stock_actual, 0)              AS stock_actual
                     FROM public.productos
                     WHERE activo = TRUE
                     ORDER BY nombre;
                     """
                 )
+
                 rows = cur.fetchall()
         finally:
             cn.close()
@@ -54,6 +56,7 @@ class ProductosRepo:
                     precio_venta_blister=float(r[4]) if r[4] is not None else None,
                     unidades_por_blister=int(r[5] or 1),
                     stock_unidades=int(r[6] or 0),
+                    stock_actual=int(r[7] or 0),
                 )
             )
         return productos
@@ -87,12 +90,13 @@ class ProductosRepo:
                 precio_venta_unidad,
                 precio_venta_blister,
                 stock_unidades,
+                stock_actual,
                 categoria,
                 activo,
                 fecha_registro,
                 unidades_por_blister
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), %s)
             RETURNING id;
         """
 
@@ -108,7 +112,8 @@ class ProductosRepo:
                         float(precio_venta_blister)
                         if precio_venta_blister is not None
                         else None,
-                        int(stock_unidades),
+                        int(stock_unidades),  # stock_unidades
+                        int(stock_unidades),  # stock_actual = stock inicial
                         categoria,
                         int(unidades_por_blister)
                         if unidades_por_blister is not None
@@ -116,6 +121,7 @@ class ProductosRepo:
                     ),
                 )
                 new_id = int(cur.fetchone()[0])
+
             cn.commit()
             return new_id
         except Exception:
