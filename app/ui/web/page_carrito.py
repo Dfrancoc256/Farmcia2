@@ -233,9 +233,7 @@ def page_productos_carrito():
         with tab_reg:
             with st.form("form_reg_producto"):
                 nombre_reg = st.text_input("Nombre del producto", key="reg_nombre")
-                detalle_reg = st.text_input(
-                    "Detalle / descripción", key="reg_detalle"
-                )
+                detalle_reg = st.text_input("Detalle / descripción", key="reg_detalle")
                 categoria_reg = st.text_input(
                     "Categoría / palabras clave",
                     key="reg_categoria",
@@ -289,17 +287,16 @@ def page_productos_carrito():
                         precio_venta_blister=(
                             precio_blister_reg if precio_blister_reg > 0 else None
                         ),
-                        stock_unidades=stock_inicial_reg,
+                        stock_unidades=0,
                         categoria=categoria_reg or None,
                         unidades_por_blister=(
                             unidades_blister_reg if unidades_blister_reg > 0 else None
                         ),
                     )
-                    st.success(f"✅ Producto creado con id {nuevo_id}.")
                 except Exception as e:
                     st.error(f"❌ Error al crear producto: {e}")
                 else:
-                    # Solo si todo salió bien, recargamos la página
+                    st.success(f"✅ Producto creado con id {nuevo_id}.")
                     st.rerun()
 
         # ==================================================
