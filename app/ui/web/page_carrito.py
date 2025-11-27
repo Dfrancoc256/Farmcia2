@@ -94,6 +94,14 @@ def page_productos_carrito():
         )
 
     # =========================
+    #   MENSAJES POST-RERUN
+    # =========================
+    for key in ["msg_producto_creado", "msg_producto_editado"]:
+        msg = st.session_state.pop(key, None)
+        if msg:
+            st.success(msg)
+
+    # =========================
     #   SESSION STATE BÁSICO
     # =========================
     if "carrito" not in st.session_state:
@@ -228,7 +236,7 @@ def page_productos_carrito():
         )
 
         # ==================================================
-        #   TAB 1: REGISTRAR PRODUCTO (campos vacíos)
+        #   TAB 1: REGISTRAR PRODUCTO
         # ==================================================
         with tab_reg:
             with st.form("form_reg_producto"):
@@ -296,7 +304,9 @@ def page_productos_carrito():
                 except Exception as e:
                     st.error(f"❌ Error al crear producto: {e}")
                 else:
-                    st.success(f"✅ Producto creado con id {nuevo_id}.")
+                    st.session_state["msg_producto_creado"] = (
+                        f"✅ Producto '{nombre_reg}' creado con id {nuevo_id}."
+                    )
                     st.rerun()
 
         # ==================================================
@@ -392,6 +402,9 @@ def page_productos_carrito():
                     st.session_state["edit_unidades_blister"] = int(
                         prod_sel.get("UnidadesBlister", 0) or 0
                     )
+                    st.session_state["edit_stock_unidades"] = int(
+                        prod_sel.get("StockUnidades", 0) or 0
+                    )
 
             with st.form("form_edit_producto"):
                 nombre_edit = st.text_input(
@@ -432,6 +445,14 @@ def page_productos_carrito():
                     key="edit_unidades_blister",
                     help="0 si no aplica blister.",
                 )
+                stock_actual_edit = st.number_input(
+                    "Stock actual (unidades)",
+                    min_value=0,
+                    step=1,
+                    key="edit_stock_unidades",
+                    disabled=True,
+                    help="El stock se ajusta desde el módulo de inventario / movimientos.",
+                )
 
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
@@ -470,10 +491,12 @@ def page_productos_carrito():
                                 else None
                             ),
                         )
-                        st.success("✅ Producto actualizado correctamente.")
                     except Exception as e:
                         st.error(f"❌ Error al guardar producto: {e}")
                     else:
+                        st.session_state["msg_producto_editado"] = (
+                            f"✅ Producto '{nombre_edit}' actualizado correctamente."
+                        )
                         st.rerun()
 
             if desactivar_click:
@@ -594,4 +617,3 @@ def page_productos_carrito():
                             st.rerun()
     else:
         st.info("El carrito está vacío.")
-
