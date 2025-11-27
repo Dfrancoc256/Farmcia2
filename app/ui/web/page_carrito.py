@@ -287,7 +287,7 @@ def page_productos_carrito():
                         precio_venta_blister=(
                             precio_blister_reg if precio_blister_reg > 0 else None
                         ),
-                        stock_unidades=0,
+                        stock_unidades=stock_inicial_reg,
                         categoria=categoria_reg or None,
                         unidades_por_blister=(
                             unidades_blister_reg if unidades_blister_reg > 0 else None
