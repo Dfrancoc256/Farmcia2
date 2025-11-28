@@ -376,7 +376,7 @@ def page_productos_carrito():
                     st.success("✅ Producto añadido al carrito.")
 
         # ==================================================
-        #   TAB 3: EDITAR / ELIMINAR
+        #   TAB 3: EDITAR / ELIMINAR (incluye edición de stock)
         # ==================================================
         with tab_edit:
             # Sincronizamos los campos edit_* cada vez que cambia la selección
@@ -402,9 +402,10 @@ def page_productos_carrito():
                     st.session_state["edit_unidades_blister"] = int(
                         prod_sel.get("UnidadesBlister", 0) or 0
                     )
-                    st.session_state["edit_stock_unidades"] = int(
-                        prod_sel.get("StockUnidades", 0) or 0
-                    )
+                    stock_actual = int(prod_sel.get("StockUnidades", 0) or 0)
+                    st.session_state["edit_stock_unidades"] = stock_actual
+                    # guardamos el stock original para calcular delta
+                    st.session_state["edit_stock_original"] = stock_actual
 
             with st.form("form_edit_producto"):
                 nombre_edit = st.text_input(
@@ -445,13 +446,14 @@ def page_productos_carrito():
                     key="edit_unidades_blister",
                     help="0 si no aplica blister.",
                 )
+
+                # AHORA SÍ editable
                 stock_actual_edit = st.number_input(
                     "Stock actual (unidades)",
                     min_value=0,
                     step=1,
                     key="edit_stock_unidades",
-                    disabled=True,
-                    help="El stock se ajusta desde el módulo de inventario / movimientos.",
+                    help="Puedes ajustar el stock manualmente (se registra un movimiento).",
                 )
 
                 col_e1, col_e2 = st.columns(2)
@@ -473,6 +475,7 @@ def page_productos_carrito():
                     st.warning("Selecciona un producto en la tabla para editarlo.")
                 else:
                     try:
+                        # 1) Actualizamos datos generales del producto (sin stock)
                         productos_service.update_producto_completo(
                             pid=pid_edicion,
                             nombre=nombre_edit,
@@ -491,6 +494,20 @@ def page_productos_carrito():
                                 else None
                             ),
                         )
+
+                        # 2) Ajustamos stock si cambió
+                        stock_original = st.session_state.get(
+                            "edit_stock_original", stock_actual_edit
+                        )
+                        delta = int(stock_actual_edit) - int(stock_original)
+                        if delta != 0:
+                            productos_service.ajustar_stock(
+                                pid=pid_edicion,
+                                delta=delta,
+                                motivo="Ajuste manual desde edición",
+                                referencia="page_carrito",
+                            )
+
                     except Exception as e:
                         st.error(f"❌ Error al guardar producto: {e}")
                     else:
@@ -582,7 +599,6 @@ def page_productos_carrito():
         # Registrar venta(s)
         with col_b:
             if st.button("Registrar venta(s)", type="primary"):
-                # Validamos que el pago cubra el total
                 if monto_pagado < total:
                     st.error(
                         "❌ El monto pagado no puede ser menor que el total de la venta."
@@ -596,14 +612,11 @@ def page_productos_carrito():
                     except Exception as e:
                         st.error(f"❌ Ocurrió un error al registrar la venta: {e}")
                     else:
-                        # Limpiamos carrito
                         st.session_state["carrito"] = []
 
-                        # Asegurar que tengamos cambio calculado
                         if cambio is None:
                             cambio = max(monto_pagado - total, 0.0)
 
-                        # Mensaje de resumen
                         st.success("✅ Venta(s) registrada(s) correctamente.")
                         st.info(
                             f"**Resumen de la venta:**  \n"
@@ -612,7 +625,6 @@ def page_productos_carrito():
                             f"- Cambio entregado: **Q {cambio:,.2f}**"
                         )
 
-                        # Botón para seguir vendiendo
                         if st.button("➕ Agregar más productos"):
                             st.rerun()
     else:
