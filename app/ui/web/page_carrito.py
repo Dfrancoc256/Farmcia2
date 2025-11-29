@@ -441,9 +441,14 @@ def page_productos_carrito():
                 st.session_state["edit_id"] = current_id
 
                 # Tomamos la fila actualizada desde df_prods usando el id
-                row = df_prods[df_prods["id"] == current_id].iloc[0]
+                row_df = df_prods[df_prods["id"] == current_id]
+                if not row_df.empty:
+                    row = row_df.iloc[0]
+                else:
+                    # Fallback si por alguna razón no lo encontramos
+                    row = pd.Series(prod_sel)
 
-                st.session_state["edit_nombre"] = row["Nombre"] or ""
+                st.session_state["edit_nombre"] = row.get("Nombre", "") or ""
                 st.session_state["edit_detalle"] = row.get("Detalle", "") or ""
                 st.session_state["edit_categoria"] = row.get("Categoria", "") or ""
 
@@ -459,11 +464,18 @@ def page_productos_carrito():
                 st.session_state["edit_precio_caja"] = float(
                     row.get("Caja", 0.0) or 0.0
                 )
-                st.session_state["edit_unidades_blister"] = int(
-                    row.get("UnidadesBlister, 0") if row.get("UnidadesBlister") is not None else 0
-                )
 
-                stock_actual = int(row.get("StockUnidades", 0) or 0)
+                # 👇 Aquí estaba el error: podían venir None/NaN
+                unidades_val = row.get("UnidadesBlister", 0)
+                if unidades_val is None or pd.isna(unidades_val):
+                    unidades_val = 0
+                st.session_state["edit_unidades_blister"] = int(unidades_val)
+
+                stock_val = row.get("StockUnidades", 0)
+                if stock_val is None or pd.isna(stock_val):
+                    stock_val = 0
+                stock_actual = int(stock_val)
+
                 st.session_state["edit_stock_unidades"] = stock_actual
                 st.session_state["edit_stock_original"] = stock_actual
 
