@@ -129,7 +129,7 @@ def page_productos_carrito():
                 "Compra",
                 "Unidad",
                 "Blister",
-                "Caja",  # <- precio_venta_caja
+                "Caja",
                 "UnidadesBlister",
                 "StockUnidades",
                 "Categoria",
@@ -167,13 +167,47 @@ def page_productos_carrito():
                 st.rerun()
 
         df_view = df_prods.copy()
+
+        # ----- BÚSQUEDA INTELIGENTE: nombre + detalle + categoría -----
         if q:
-            df_view = df_view[df_view["Nombre"].str.contains(q, case=False, na=False)]
+            terms = [t.strip() for t in q.split() if t.strip()]
+            if terms:
+                mask = pd.Series(False, index=df_prods.index)
+
+                for term in terms:
+                    term_mask = (
+                        df_prods["Nombre"]
+                        .astype(str)
+                        .str.contains(term, case=False, na=False)
+                        | df_prods.get(
+                            "Detalle", pd.Series("", index=df_prods.index)
+                        )
+                        .astype(str)
+                        .str.contains(term, case=False, na=False)
+                        | df_prods.get(
+                            "Categoria", pd.Series("", index=df_prods.index)
+                        )
+                        .astype(str)
+                        .str.contains(term, case=False, na=False)
+                    )
+                    mask = mask | term_mask
+
+                df_view = df_prods[mask]
+            else:
+                df_view = df_prods.copy()
 
         prod_sel_dict = None
 
         if not df_view.empty:
-            columnas_grid = ["Nombre", "Detalle", "Compra", "Unidad", "Blister", "Caja", "StockUnidades"]
+            columnas_grid = [
+                "Nombre",
+                "Detalle",
+                "Compra",
+                "Unidad",
+                "Blister",
+                "Caja",
+                "StockUnidades",
+            ]
 
             gb = GridOptionsBuilder.from_dataframe(df_view[columnas_grid])
             gb.configure_selection("single", use_checkbox=False)
@@ -348,22 +382,33 @@ def page_productos_carrito():
                     disabled=True,
                 )
 
-                tipo = st.selectbox("Tipo de venta", ["unidad", "blister"])
+                # Ahora permitimos unidad / blister / caja
+                tipo = st.selectbox("Tipo de venta", ["unidad", "blister", "caja"])
                 cantidad = st.number_input("Cantidad", min_value=1, value=1, step=1)
                 fecha = st.date_input("Fecha", value=date.today())
 
                 precio_unidad = float(prod_sel.get("Unidad", 0) or 0)
                 precio_blister = float(prod_sel.get("Blister", 0) or 0)
+                precio_caja = float(prod_sel.get("Caja", 0) or 0)
                 unidades_por_blister = int(prod_sel.get("UnidadesBlister", 1) or 1)
 
                 if tipo == "unidad":
                     price = precio_unidad
-                else:
+                elif tipo == "blister":
                     price = (
                         precio_blister
                         if precio_blister > 0
                         else precio_unidad * unidades_por_blister
                     )
+                else:  # tipo == "caja"
+                    if precio_caja > 0:
+                        price = precio_caja
+                    else:
+                        st.warning(
+                            "Este producto no tiene precio por caja configurado. "
+                            "Se usará el precio por unidad."
+                        )
+                        price = precio_unidad
 
                 monto_default = round(price * cantidad, 2)
                 monto = st.number_input(
@@ -410,7 +455,6 @@ def page_productos_carrito():
                     st.session_state["edit_precio_blister"] = float(
                         prod_sel.get("Blister", 0.0) or 0.0
                     )
-                    # NUEVO: precio caja (si viene en el DF, si no, 0.0)
                     st.session_state["edit_precio_caja"] = float(
                         prod_sel.get("Caja", 0.0) or 0.0
                     )
@@ -454,7 +498,6 @@ def page_productos_carrito():
                     key="edit_precio_blister",
                     help="Si el producto no se vende por blister, puedes dejarlo en 0.",
                 )
-                # NUEVO: precio caja en edición
                 precio_caja_edit = st.number_input(
                     "Precio venta caja (Q)",
                     min_value=0.0,

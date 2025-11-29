@@ -29,13 +29,13 @@ class VentasService:
                 columns=[
                     "id",
                     "Nombre",
+                    "Detalle",
                     "Compra",
                     "Unidad",
                     "Blister",
-                    "Caja",            # <- precio_venta_caja
+                    "Caja",
                     "UnidadesBlister",
                     "StockUnidades",
-                    "Detalle",
                     "Categoria",
                 ]
             )
@@ -46,13 +46,13 @@ class VentasService:
                 {
                     "id": p.id,
                     "Nombre": p.nombre,
+                    "Detalle": getattr(p, "detalle", None),
                     "Compra": p.precio_compra,
                     "Unidad": p.precio_venta_unidad,
                     "Blister": p.precio_venta_blister,
                     "Caja": getattr(p, "precio_venta_caja", 0.0),
                     "UnidadesBlister": p.unidades_por_blister,
                     "StockUnidades": p.stock_unidades,
-                    "Detalle": getattr(p, "detalle", None),
                     "Categoria": getattr(p, "categoria", None),
                 }
             )
@@ -97,16 +97,19 @@ class VentasService:
                 raise ValueError("La cantidad debe ser mayor que cero.")
 
             tipo = str(it["tipo"]).lower()
-            if tipo not in ("unidad", "blister"):
-                raise ValueError("Tipo de venta inválido (unidad/blister).")
+            if tipo not in ("unidad", "blister", "caja"):
+                raise ValueError("Tipo de venta inválido (unidad/blister/caja).")
 
             # ===============================
             #   VALIDACIÓN DE STOCK
             # ===============================
             if tipo == "unidad":
                 unidades_requeridas = cantidad
-            else:
+            elif tipo == "blister":
                 unidades_requeridas = cantidad * prod.unidades_por_blister
+            else:  # tipo == "caja"
+                # Caja equivale a una unidad en stock_unidades
+                unidades_requeridas = cantidad
 
             if unidades_requeridas > prod.stock_unidades:
                 raise ValueError(
