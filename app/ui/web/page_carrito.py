@@ -302,7 +302,7 @@ def page_productos_carrito():
                     key="reg_precio_blister",
                     help="Si el producto no se vende por blister, puedes dejarlo en 0.",
                 )
-                # NUEVO: precio venta caja
+                # Precio venta caja
                 precio_caja_reg = st.number_input(
                     "Precio venta caja (Q)",
                     min_value=0.0,
@@ -330,29 +330,52 @@ def page_productos_carrito():
                 submitted_reg = st.form_submit_button("Guardar producto", type="primary")
 
             if submitted_reg:
-                try:
-                    nuevo_id = productos_service.crear_producto(
-                        nombre=nombre_reg,
-                        detalle=detalle_reg or None,
-                        precio_compra=precio_compra_reg,
-                        precio_venta_unidad=precio_unidad_reg,
-                        precio_venta_blister=(
-                            precio_blister_reg if precio_blister_reg > 0 else None
-                        ),
-                        stock_unidades=stock_inicial_reg,
-                        categoria=categoria_reg or None,
-                        unidades_por_blister=(
-                            unidades_blister_reg if unidades_blister_reg > 0 else None
-                        ),
-                        precio_venta_caja=precio_caja_reg,
+                # ==============================
+                #  VALIDACIÓN EN LA UI
+                # ==============================
+                precios_venta = [
+                    precio_unidad_reg,
+                    precio_blister_reg,
+                    precio_caja_reg,
+                ]
+                precios_venta_positivos = [p for p in precios_venta if p > 0]
+
+                # Si hay precio de compra (>0), debe existir al menos
+                # un precio de venta (unidad, blister o caja) > 0
+                if precio_compra_reg > 0 and not precios_venta_positivos:
+                    st.error(
+                        "Si existe un precio de compra, debe haber al menos un "
+                        "precio de venta (unidad, blister o caja) mayor que 0."
                     )
-                except Exception as e:
-                    st.error(f"❌ Error al crear producto: {e}")
                 else:
-                    st.session_state["msg_producto_creado"] = (
-                        f"✅ Producto '{nombre_reg}' creado con id {nuevo_id}."
-                    )
-                    st.rerun()
+                    # ==============================
+                    #  LLAMADA AL SERVICE
+                    # ==============================
+                    try:
+                        nuevo_id = productos_service.crear_producto(
+                            nombre=nombre_reg,
+                            detalle=detalle_reg or None,
+                            precio_compra=precio_compra_reg,
+                            precio_venta_unidad=precio_unidad_reg,
+                            precio_venta_blister=(
+                                precio_blister_reg if precio_blister_reg > 0 else None
+                            ),
+                            stock_unidades=stock_inicial_reg,
+                            categoria=categoria_reg or None,
+                            unidades_por_blister=(
+                                unidades_blister_reg
+                                if unidades_blister_reg > 0
+                                else None
+                            ),
+                            precio_venta_caja=precio_caja_reg,
+                        )
+                    except Exception as e:
+                        st.error(f"❌ Error al crear producto: {e}")
+                    else:
+                        st.session_state["msg_producto_creado"] = (
+                            f"✅ Producto '{nombre_reg}' creado con id {nuevo_id}."
+                        )
+                        st.rerun()
 
         # ==================================================
         #   TAB 2: AÑADIR AL CARRITO
