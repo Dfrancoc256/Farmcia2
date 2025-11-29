@@ -55,6 +55,7 @@ class ProductosService:
         stock_unidades: int,
         categoria: Optional[str],
         unidades_por_blister: Optional[int],
+        precio_venta_caja: float = 0.0,
     ) -> int:
         """
         Valida datos y delega al repo la creación del producto.
@@ -76,6 +77,9 @@ class ProductosService:
 
         if stock_unidades < 0:
             raise ValueError("El stock inicial no puede ser negativo.")
+
+        if precio_venta_caja < 0:
+            raise ValueError("El precio de venta por caja no puede ser negativo.")
 
         # ---------- Lógica de blister ----------
         if precio_venta_blister is not None:
@@ -100,6 +104,7 @@ class ProductosService:
             stock_unidades=stock_unidades,
             categoria=categoria,
             unidades_por_blister=unidades_por_blister,
+            precio_venta_caja=precio_venta_caja,
         )
 
     # ==========================================================
@@ -111,6 +116,7 @@ class ProductosService:
         precio_compra: float,
         precio_unidad: float,
         precio_blister: Optional[float] = None,
+        precio_caja: float = 0.0,
     ) -> None:
         if precio_compra < 0:
             raise ValueError("Precio de compra inválido (no puede ser negativo).")
@@ -121,7 +127,16 @@ class ProductosService:
         if precio_blister is not None and precio_blister <= 0:
             raise ValueError("Precio por blister inválido (si se usa, debe ser > 0).")
 
-        self.repo.update_precios(pid, precio_compra, precio_unidad, precio_blister)
+        if precio_caja < 0:
+            raise ValueError("Precio por caja inválido (no puede ser negativo).")
+
+        self.repo.update_precios(
+            pid,
+            precio_compra,
+            precio_unidad,
+            precio_blister,
+            precio_caja,
+        )
 
     # ==========================================================
     #   AJUSTAR STOCK
@@ -154,6 +169,7 @@ class ProductosService:
         precio_venta_blister: Optional[float],
         categoria: Optional[str],
         unidades_por_blister: Optional[int],
+        precio_venta_caja: float = 0.0,
     ) -> None:
         """
         Actualiza los datos principales de un producto
@@ -184,6 +200,9 @@ class ProductosService:
         if unidades_por_blister is not None and unidades_por_blister < 0:
             raise ValueError("Las unidades por blister no pueden ser negativas.")
 
+        if precio_venta_caja < 0:
+            raise ValueError("El precio de venta por caja no puede ser negativo.")
+
         self.repo.update_producto(
             pid=pid,
             nombre=nombre,
@@ -193,6 +212,7 @@ class ProductosService:
             precio_venta_blister=precio_venta_blister,
             categoria=categoria,
             unidades_por_blister=unidades_por_blister,
+            precio_venta_caja=precio_venta_caja,
         )
 
     # 👉 ALIAS compatible con page_carrito.py
@@ -207,6 +227,7 @@ class ProductosService:
         categoria: Optional[str],
         unidades_blister: Optional[int] = None,
         unidades_por_blister: Optional[int] = None,
+        precio_caja: float = 0.0,
     ) -> None:
         """
         Alias para mantener compatibilidad con la llamada que hace page_carrito.py,
@@ -225,6 +246,7 @@ class ProductosService:
             precio_venta_blister=precio_blister,
             categoria=categoria,
             unidades_por_blister=unidades_por_blister,
+            precio_venta_caja=precio_caja,
         )
 
     # ==========================================================

@@ -172,7 +172,7 @@ def page_productos_carrito():
         prod_sel_dict = None
 
         if not df_view.empty:
-            columnas_grid = ["Nombre", "Compra", "Unidad", "Blister", "StockUnidades"]
+            columnas_grid = ["Nombre", "Detalle", "Compra", "Unidad", "Blister", "Caja", "StockUnidades"]
 
             gb = GridOptionsBuilder.from_dataframe(df_view[columnas_grid])
             gb.configure_selection("single", use_checkbox=False)
@@ -267,6 +267,15 @@ def page_productos_carrito():
                     key="reg_precio_blister",
                     help="Si el producto no se vende por blister, puedes dejarlo en 0.",
                 )
+                # NUEVO: precio venta caja
+                precio_caja_reg = st.number_input(
+                    "Precio venta caja (Q)",
+                    min_value=0.0,
+                    step=0.01,
+                    key="reg_precio_caja",
+                    help="Si el producto no se vende por caja, puedes dejarlo en 0.",
+                )
+
                 unidades_blister_reg = st.number_input(
                     "Unidades por blister",
                     min_value=0,
@@ -300,6 +309,7 @@ def page_productos_carrito():
                         unidades_por_blister=(
                             unidades_blister_reg if unidades_blister_reg > 0 else None
                         ),
+                        precio_venta_caja=precio_caja_reg,
                     )
                 except Exception as e:
                     st.error(f"❌ Error al crear producto: {e}")
@@ -399,6 +409,10 @@ def page_productos_carrito():
                     st.session_state["edit_precio_blister"] = float(
                         prod_sel.get("Blister", 0.0) or 0.0
                     )
+                    # NUEVO: precio caja (si viene en el DF, si no, 0.0)
+                    st.session_state["edit_precio_caja"] = float(
+                        prod_sel.get("Caja", 0.0) or 0.0
+                    )
                     st.session_state["edit_unidades_blister"] = int(
                         prod_sel.get("UnidadesBlister", 0) or 0
                     )
@@ -439,6 +453,15 @@ def page_productos_carrito():
                     key="edit_precio_blister",
                     help="Si el producto no se vende por blister, puedes dejarlo en 0.",
                 )
+                # NUEVO: precio caja en edición
+                precio_caja_edit = st.number_input(
+                    "Precio venta caja (Q)",
+                    min_value=0.0,
+                    step=0.01,
+                    key="edit_precio_caja",
+                    help="Si el producto no se vende por caja, puedes dejarlo en 0.",
+                )
+
                 unidades_blister_edit = st.number_input(
                     "Unidades por blister",
                     min_value=0,
@@ -493,6 +516,7 @@ def page_productos_carrito():
                                 if unidades_blister_edit > 0
                                 else None
                             ),
+                            precio_caja=precio_caja_edit,
                         )
 
                         # 2) Ajustamos stock si cambió

@@ -19,3 +19,4 @@ class Producto(BaseModel):
     unidades_por_blister: int
     stock_unidades: int
     stock_actual: int   # <- nombre corregido
+    precio_venta_caja: float  # <- AGREGADO, SIN DEFAULT

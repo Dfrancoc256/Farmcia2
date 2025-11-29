@@ -34,7 +34,8 @@ class ProductosRepo:
                         precio_venta_blister::double precision AS blister,
                         COALESCE(unidades_por_blister, 1)      AS unidades_por_blister,
                         COALESCE(stock_unidades, 0)            AS stock_unidades,
-                        COALESCE(stock_actual, 0)              AS stock_actual
+                        COALESCE(stock_actual, 0)              AS stock_actual,
+                        precio_venta_caja::double precision    AS caja
                     FROM public.productos
                     WHERE activo = TRUE
                     ORDER BY nombre;
@@ -57,6 +58,7 @@ class ProductosRepo:
                     unidades_por_blister=int(r[5] or 1),
                     stock_unidades=int(r[6] or 0),
                     stock_actual=int(r[7] or 0),
+                    precio_venta_caja=float(r[8]),
                 )
             )
         return productos
@@ -74,6 +76,7 @@ class ProductosRepo:
         stock_unidades: int,
         categoria: Optional[str],
         unidades_por_blister: Optional[int],
+        precio_venta_caja: float,
     ) -> int:
         """
         Inserta un nuevo producto en public.productos y devuelve el id generado.
@@ -94,9 +97,10 @@ class ProductosRepo:
                 categoria,
                 activo,
                 fecha_registro,
-                unidades_por_blister
+                unidades_por_blister,
+                precio_venta_caja
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), %s, %s)
             RETURNING id;
         """
 
@@ -118,6 +122,7 @@ class ProductosRepo:
                         int(unidades_por_blister)
                         if unidades_por_blister is not None
                         else None,
+                        float(precio_venta_caja),
                     ),
                 )
                 new_id = int(cur.fetchone()[0])
@@ -139,6 +144,7 @@ class ProductosRepo:
         precio_compra: float,
         precio_unidad: float,
         precio_blister: Optional[float],
+        precio_caja: float,
     ) -> None:
         """
         Actualiza precios de compra / venta para un producto.
@@ -154,13 +160,15 @@ class ProductosRepo:
                     UPDATE public.productos
                     SET precio_compra        = %s,
                         precio_venta_unidad  = %s,
-                        precio_venta_blister = %s
+                        precio_venta_blister = %s,
+                        precio_venta_caja    = %s
                     WHERE id = %s;
                     """,
                     (
                         float(precio_compra),
                         float(precio_unidad),
                         float(precio_blister) if precio_blister is not None else None,
+                        float(precio_caja),
                         int(pid),
                     ),
                 )
@@ -254,6 +262,7 @@ class ProductosRepo:
         precio_venta_blister: Optional[float],
         categoria: Optional[str],
         unidades_por_blister: Optional[int],
+        precio_venta_caja: float,
     ) -> None:
         """
         Actualiza los datos principales de un producto en la tabla productos.
@@ -265,13 +274,14 @@ class ProductosRepo:
 
         sql = """
             UPDATE public.productos
-            SET nombre              = %s,
-                detalle             = %s,
-                precio_compra       = %s,
-                precio_venta_unidad = %s,
-                precio_venta_blister= %s,
-                categoria           = %s,
-                unidades_por_blister = %s
+            SET nombre               = %s,
+                detalle              = %s,
+                precio_compra        = %s,
+                precio_venta_unidad  = %s,
+                precio_venta_blister = %s,
+                categoria            = %s,
+                unidades_por_blister = %s,
+                precio_venta_caja    = %s
             WHERE id = %s;
         """
 
@@ -291,6 +301,7 @@ class ProductosRepo:
                         int(unidades_por_blister)
                         if unidades_por_blister is not None
                         else None,
+                        float(precio_venta_caja),
                         int(pid),
                     ),
                 )

@@ -32,8 +32,11 @@ class VentasService:
                     "Compra",
                     "Unidad",
                     "Blister",
+                    "Caja",            # <- precio_venta_caja
                     "UnidadesBlister",
                     "StockUnidades",
+                    "Detalle",
+                    "Categoria",
                 ]
             )
 
@@ -46,8 +49,11 @@ class VentasService:
                     "Compra": p.precio_compra,
                     "Unidad": p.precio_venta_unidad,
                     "Blister": p.precio_venta_blister,
+                    "Caja": getattr(p, "precio_venta_caja", 0.0),
                     "UnidadesBlister": p.unidades_por_blister,
                     "StockUnidades": p.stock_unidades,
+                    "Detalle": getattr(p, "detalle", None),
+                    "Categoria": getattr(p, "categoria", None),
                 }
             )
 
