@@ -435,36 +435,37 @@ def page_productos_carrito():
         #   TAB 3: EDITAR / ELIMINAR (incluye edición de stock)
         # ==================================================
         with tab_edit:
-            # Sincronizamos los campos edit_* cada vez que cambia la selección
+            # Sincronizamos SIEMPRE los campos edit_* con lo que viene de la tabla
             if prod_sel:
                 current_id = int(prod_sel.get("id"))
-                last_id = st.session_state.get("edit_id")
-                if current_id != last_id:
-                    st.session_state["edit_id"] = current_id
-                    st.session_state["edit_nombre"] = prod_sel.get("Nombre", "") or ""
-                    st.session_state["edit_detalle"] = prod_sel.get("Detalle", "") or ""
-                    st.session_state["edit_categoria"] = (
-                        prod_sel.get("Categoria", "") or ""
-                    )
-                    st.session_state["edit_precio_compra"] = float(
-                        prod_sel.get("Compra", 0.0) or 0.0
-                    )
-                    st.session_state["edit_precio_unidad"] = float(
-                        prod_sel.get("Unidad", 0.0) or 0.0
-                    )
-                    st.session_state["edit_precio_blister"] = float(
-                        prod_sel.get("Blister", 0.0) or 0.0
-                    )
-                    st.session_state["edit_precio_caja"] = float(
-                        prod_sel.get("Caja", 0.0) or 0.0
-                    )
-                    st.session_state["edit_unidades_blister"] = int(
-                        prod_sel.get("UnidadesBlister", 0) or 0
-                    )
-                    stock_actual = int(prod_sel.get("StockUnidades", 0) or 0)
-                    st.session_state["edit_stock_unidades"] = stock_actual
-                    # guardamos el stock original para calcular delta
-                    st.session_state["edit_stock_original"] = stock_actual
+                st.session_state["edit_id"] = current_id
+
+                # Tomamos la fila actualizada desde df_prods usando el id
+                row = df_prods[df_prods["id"] == current_id].iloc[0]
+
+                st.session_state["edit_nombre"] = row["Nombre"] or ""
+                st.session_state["edit_detalle"] = row.get("Detalle", "") or ""
+                st.session_state["edit_categoria"] = row.get("Categoria", "") or ""
+
+                st.session_state["edit_precio_compra"] = float(
+                    row.get("Compra", 0.0) or 0.0
+                )
+                st.session_state["edit_precio_unidad"] = float(
+                    row.get("Unidad", 0.0) or 0.0
+                )
+                st.session_state["edit_precio_blister"] = float(
+                    row.get("Blister", 0.0) or 0.0
+                )
+                st.session_state["edit_precio_caja"] = float(
+                    row.get("Caja", 0.0) or 0.0
+                )
+                st.session_state["edit_unidades_blister"] = int(
+                    row.get("UnidadesBlister, 0") if row.get("UnidadesBlister") is not None else 0
+                )
+
+                stock_actual = int(row.get("StockUnidades", 0) or 0)
+                st.session_state["edit_stock_unidades"] = stock_actual
+                st.session_state["edit_stock_original"] = stock_actual
 
             with st.form("form_edit_producto"):
                 nombre_edit = st.text_input(
