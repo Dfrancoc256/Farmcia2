@@ -435,50 +435,54 @@ def page_productos_carrito():
         #   TAB 3: EDITAR / ELIMINAR (incluye edición de stock)
         # ==================================================
         with tab_edit:
-            # Sincronizamos SIEMPRE los campos edit_* con lo que viene de la tabla
+            # Sincronizamos SOLO cuando cambia el producto seleccionado
             if prod_sel:
                 current_id = int(prod_sel.get("id"))
-                st.session_state["edit_id"] = current_id
+                last_id = st.session_state.get("edit_id")
 
-                # Tomamos la fila actualizada desde df_prods usando el id
-                row_df = df_prods[df_prods["id"] == current_id]
-                if not row_df.empty:
-                    row = row_df.iloc[0]
-                else:
-                    # Fallback si por alguna razón no lo encontramos
-                    row = pd.Series(prod_sel)
+                if current_id != last_id:
+                    st.session_state["edit_id"] = current_id
 
-                st.session_state["edit_nombre"] = row.get("Nombre", "") or ""
-                st.session_state["edit_detalle"] = row.get("Detalle", "") or ""
-                st.session_state["edit_categoria"] = row.get("Categoria", "") or ""
+                    # Tomamos la fila actualizada desde df_prods usando el id
+                    row_df = df_prods[df_prods["id"] == current_id]
+                    if not row_df.empty:
+                        row = row_df.iloc[0]
+                    else:
+                        # Fallback si por alguna razón no lo encontramos
+                        row = pd.Series(prod_sel)
 
-                st.session_state["edit_precio_compra"] = float(
-                    row.get("Compra", 0.0) or 0.0
-                )
-                st.session_state["edit_precio_unidad"] = float(
-                    row.get("Unidad", 0.0) or 0.0
-                )
-                st.session_state["edit_precio_blister"] = float(
-                    row.get("Blister", 0.0) or 0.0
-                )
-                st.session_state["edit_precio_caja"] = float(
-                    row.get("Caja", 0.0) or 0.0
-                )
+                    st.session_state["edit_nombre"] = row.get("Nombre", "") or ""
+                    st.session_state["edit_detalle"] = row.get("Detalle", "") or ""
+                    st.session_state["edit_categoria"] = row.get("Categoria", "") or ""
 
-                # 👇 Aquí estaba el error: podían venir None/NaN
-                unidades_val = row.get("UnidadesBlister", 0)
-                if unidades_val is None or pd.isna(unidades_val):
-                    unidades_val = 0
-                st.session_state["edit_unidades_blister"] = int(unidades_val)
+                    st.session_state["edit_precio_compra"] = float(
+                        row.get("Compra", 0.0) or 0.0
+                    )
+                    st.session_state["edit_precio_unidad"] = float(
+                        row.get("Unidad", 0.0) or 0.0
+                    )
+                    st.session_state["edit_precio_blister"] = float(
+                        row.get("Blister", 0.0) or 0.0
+                    )
+                    st.session_state["edit_precio_caja"] = float(
+                        row.get("Caja", 0.0) or 0.0
+                    )
 
-                stock_val = row.get("StockUnidades", 0)
-                if stock_val is None or pd.isna(stock_val):
-                    stock_val = 0
-                stock_actual = int(stock_val)
+                    # Unidades por blister (manejar None/NaN)
+                    unidades_val = row.get("UnidadesBlister", 0)
+                    if unidades_val is None or pd.isna(unidades_val):
+                        unidades_val = 0
+                    st.session_state["edit_unidades_blister"] = int(unidades_val)
 
-                st.session_state["edit_stock_unidades"] = stock_actual
-                st.session_state["edit_stock_original"] = stock_actual
+                    # Stock actual (manejar None/NaN)
+                    stock_val = row.get("StockUnidades", 0)
+                    if stock_val is None or pd.isna(stock_val):
+                        stock_val = 0
+                    stock_actual = int(stock_val)
 
+                    st.session_state["edit_stock_unidades"] = stock_actual
+                    # Este es nuestro "punto de referencia" para futuros ajustes
+                    st.session_state["edit_stock_original"] = stock_actual
             with st.form("form_edit_producto"):
                 nombre_edit = st.text_input(
                     "Nombre del producto", key="edit_nombre"
@@ -592,6 +596,8 @@ def page_productos_carrito():
                     except Exception as e:
                         st.error(f"❌ Error al guardar producto: {e}")
                     else:
+                        st.session_state["edit_stock_original"] = int(stock_actual_edit)
+
                         st.session_state["msg_producto_editado"] = (
                             f"✅ Producto '{nombre_edit}' actualizado correctamente."
                         )
