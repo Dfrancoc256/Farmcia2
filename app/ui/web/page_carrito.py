@@ -125,12 +125,13 @@ def page_productos_carrito():
             columns=[
                 "id",
                 "Nombre",
+                "Detalle",
                 "Compra",
                 "Unidad",
                 "Blister",
+                "Caja",  # <- precio_venta_caja
                 "UnidadesBlister",
                 "StockUnidades",
-                "Detalle",
                 "Categoria",
             ]
         )

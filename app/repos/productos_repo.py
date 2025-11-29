@@ -29,13 +29,15 @@ class ProductosRepo:
                     SELECT
                         id,
                         nombre,
+                        detalle,
                         precio_compra::double precision        AS compra,
                         precio_venta_unidad::double precision  AS unidad,
                         precio_venta_blister::double precision AS blister,
                         COALESCE(unidades_por_blister, 1)      AS unidades_por_blister,
                         COALESCE(stock_unidades, 0)            AS stock_unidades,
                         COALESCE(stock_actual, 0)              AS stock_actual,
-                        precio_venta_caja::double precision    AS caja
+                        precio_venta_caja::double precision    AS caja,
+                        categoria
                     FROM public.productos
                     WHERE activo = TRUE
                     ORDER BY nombre;
@@ -52,13 +54,15 @@ class ProductosRepo:
                 Producto(
                     id=int(r[0]),
                     nombre=r[1],
-                    precio_compra=float(r[2]),
-                    precio_venta_unidad=float(r[3]),
-                    precio_venta_blister=float(r[4]) if r[4] is not None else None,
-                    unidades_por_blister=int(r[5] or 1),
-                    stock_unidades=int(r[6] or 0),
-                    stock_actual=int(r[7] or 0),
-                    precio_venta_caja=float(r[8]),
+                    precio_compra=float(r[3]),
+                    precio_venta_unidad=float(r[4]),
+                    precio_venta_blister=float(r[5]) if r[5] is not None else None,
+                    unidades_por_blister=int(r[6] or 1),
+                    stock_unidades=int(r[7] or 0),
+                    stock_actual=int(r[8] or 0),
+                    precio_venta_caja=float(r[9]),
+                    detalle=r[2],
+                    categoria=r[10],
                 )
             )
         return productos

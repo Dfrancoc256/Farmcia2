@@ -18,5 +18,8 @@ class Producto(BaseModel):
     precio_venta_blister: Optional[float]
     unidades_por_blister: int
     stock_unidades: int
-    stock_actual: int   # <- nombre corregido
-    precio_venta_caja: float  # <- AGREGADO, SIN DEFAULT
+    stock_actual: int
+    precio_venta_caja: float
+    # Nuevos campos opcionales (no rompen llamadas existentes)
+    detalle: Optional[str] = None
+    categoria: Optional[str] = None

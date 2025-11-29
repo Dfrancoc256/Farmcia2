@@ -72,19 +72,19 @@ class ProductosService:
         if precio_compra < 0:
             raise ValueError("El precio de compra no puede ser negativo.")
 
-        if precio_venta_unidad <= 0:
-            raise ValueError("El precio de venta por unidad debe ser mayor a 0.")
-
         if stock_unidades < 0:
             raise ValueError("El stock inicial no puede ser negativo.")
 
+        # No permitimos precios negativos
+        if precio_venta_unidad < 0:
+            raise ValueError("El precio de venta por unidad no puede ser negativo.")
+        if precio_venta_blister is not None and precio_venta_blister < 0:
+            raise ValueError("El precio de venta por blister no puede ser negativo.")
         if precio_venta_caja < 0:
             raise ValueError("El precio de venta por caja no puede ser negativo.")
 
         # ---------- Lógica de blister ----------
         if precio_venta_blister is not None:
-            if precio_venta_blister <= 0:
-                raise ValueError("El precio por blister debe ser mayor a 0.")
             if not unidades_por_blister or unidades_por_blister <= 0:
                 raise ValueError(
                     "Si defines un precio por blister, debes indicar "
@@ -93,6 +93,18 @@ class ProductosService:
 
         if unidades_por_blister is not None and unidades_por_blister < 0:
             raise ValueError("Las unidades por blister no pueden ser negativas.")
+
+        # ---------- Regla de negocio: al menos un precio > compra ----------
+        max_precio_venta = max(
+            precio_venta_unidad or 0.0,
+            precio_venta_blister or 0.0,
+            precio_venta_caja or 0.0,
+        )
+        if max_precio_venta <= precio_compra:
+            raise ValueError(
+                "Debe existir al menos un precio de venta (unidad, blister o caja) "
+                "mayor al precio de compra."
+            )
 
         # Delegar al repositorio
         return self.repo.crear_producto(
@@ -121,14 +133,24 @@ class ProductosService:
         if precio_compra < 0:
             raise ValueError("Precio de compra inválido (no puede ser negativo).")
 
-        if precio_unidad <= 0:
-            raise ValueError("Precio por unidad inválido (debe ser > 0).")
-
-        if precio_blister is not None and precio_blister <= 0:
-            raise ValueError("Precio por blister inválido (si se usa, debe ser > 0).")
-
+        # No permitimos precios negativos
+        if precio_unidad < 0:
+            raise ValueError("Precio por unidad inválido (no puede ser negativo).")
+        if precio_blister is not None and precio_blister < 0:
+            raise ValueError("Precio por blister inválido (no puede ser negativo).")
         if precio_caja < 0:
             raise ValueError("Precio por caja inválido (no puede ser negativo).")
+
+        max_precio_venta = max(
+            precio_unidad or 0.0,
+            precio_blister or 0.0,
+            precio_caja or 0.0,
+        )
+        if max_precio_venta <= precio_compra:
+            raise ValueError(
+                "Debe existir al menos un precio de venta (unidad, blister o caja) "
+                "mayor al precio de compra."
+            )
 
         self.repo.update_precios(
             pid,
@@ -185,12 +207,15 @@ class ProductosService:
         if precio_compra < 0:
             raise ValueError("El precio de compra no puede ser negativo.")
 
-        if precio_venta_unidad <= 0:
-            raise ValueError("El precio de venta por unidad debe ser mayor a 0.")
+        # No permitimos precios negativos
+        if precio_venta_unidad < 0:
+            raise ValueError("El precio de venta por unidad no puede ser negativo.")
+        if precio_venta_blister is not None and precio_venta_blister < 0:
+            raise ValueError("El precio por blister no puede ser negativo.")
+        if precio_venta_caja < 0:
+            raise ValueError("El precio de venta por caja no puede ser negativo.")
 
         if precio_venta_blister is not None:
-            if precio_venta_blister <= 0:
-                raise ValueError("El precio por blister debe ser mayor a 0.")
             if not unidades_por_blister or unidades_por_blister <= 0:
                 raise ValueError(
                     "Si defines un precio por blister, debes indicar "
@@ -200,8 +225,16 @@ class ProductosService:
         if unidades_por_blister is not None and unidades_por_blister < 0:
             raise ValueError("Las unidades por blister no pueden ser negativas.")
 
-        if precio_venta_caja < 0:
-            raise ValueError("El precio de venta por caja no puede ser negativo.")
+        max_precio_venta = max(
+            precio_venta_unidad or 0.0,
+            precio_venta_blister or 0.0,
+            precio_venta_caja or 0.0,
+        )
+        if max_precio_venta <= precio_compra:
+            raise ValueError(
+                "Debe existir al menos un precio de venta (unidad, blister o caja) "
+                "mayor al precio de compra."
+            )
 
         self.repo.update_producto(
             pid=pid,
@@ -233,7 +266,6 @@ class ProductosService:
         Alias para mantener compatibilidad con la llamada que hace page_carrito.py,
         que usa los nombres 'precio_unidad', 'precio_blister' y 'unidades_blister'.
         """
-        # Normalizamos el nombre del parámetro
         if unidades_por_blister is None:
             unidades_por_blister = unidades_blister
 
