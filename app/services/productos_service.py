@@ -46,19 +46,23 @@ class ProductosService:
     #   CREAR PRODUCTO (LÓGICA)
     # ==========================================================
     def crear_producto(
-        self,
-        nombre: str,
-        detalle: Optional[str],
-        precio_compra: float,
-        precio_venta_unidad: float,
-        precio_venta_blister: Optional[float],
-        stock_unidades: int,
-        categoria: Optional[str],
-        unidades_por_blister: Optional[int],
-        precio_venta_caja: float = 0.0,
+            self,
+            nombre: str,
+            detalle: Optional[str],
+            precio_compra: float,
+            precio_venta_unidad: float,
+            precio_venta_blister: Optional[float],
+            stock_unidades: int,
+            categoria: Optional[str],
+            unidades_por_blister: Optional[int],
+            precio_venta_caja: float,
     ) -> int:
         """
         Valida datos y delega al repo la creación del producto.
+        Regla nueva:
+        - Si hay precio de compra (>0), debe existir al menos
+          un precio de venta (unidad, blister o caja) > 0.
+        YA NO se exige que el precio de venta sea mayor al de compra.
         """
 
         nombre = (nombre or "").strip()
@@ -72,19 +76,23 @@ class ProductosService:
         if precio_compra < 0:
             raise ValueError("El precio de compra no puede ser negativo.")
 
-        if stock_unidades < 0:
-            raise ValueError("El stock inicial no puede ser negativo.")
-
-        # No permitimos precios negativos
+        # precios de venta no pueden ser negativos
         if precio_venta_unidad < 0:
             raise ValueError("El precio de venta por unidad no puede ser negativo.")
+
         if precio_venta_blister is not None and precio_venta_blister < 0:
             raise ValueError("El precio de venta por blister no puede ser negativo.")
+
         if precio_venta_caja < 0:
             raise ValueError("El precio de venta por caja no puede ser negativo.")
 
+        if stock_unidades < 0:
+            raise ValueError("El stock inicial no puede ser negativo.")
+
         # ---------- Lógica de blister ----------
         if precio_venta_blister is not None:
+            if precio_venta_blister <= 0:
+                raise ValueError("El precio por blister debe ser mayor a 0.")
             if not unidades_por_blister or unidades_por_blister <= 0:
                 raise ValueError(
                     "Si defines un precio por blister, debes indicar "
@@ -94,17 +102,22 @@ class ProductosService:
         if unidades_por_blister is not None and unidades_por_blister < 0:
             raise ValueError("Las unidades por blister no pueden ser negativas.")
 
-        # ---------- Regla de negocio: al menos un precio > compra ----------
-        max_precio_venta = max(
-            precio_venta_unidad or 0.0,
-            precio_venta_blister or 0.0,
-            precio_venta_caja or 0.0,
-        )
-        if max_precio_venta <= precio_compra:
-            raise ValueError(
-                "Debe existir al menos un precio de venta (unidad, blister o caja) "
-                "mayor al precio de compra."
+        # ---------- NUEVA REGLA ----------
+        # Si hay precio de compra (>0), tiene que haber al menos
+        # UN precio de venta > 0 (unidad, blister o caja)
+        if precio_compra > 0:
+            hay_precio_venta = any(
+                [
+                    precio_venta_unidad > 0,
+                    (precio_venta_blister or 0) > 0,
+                    precio_venta_caja > 0,
+                ]
             )
+            if not hay_precio_venta:
+                raise ValueError(
+                    "Si existe un precio de compra, debe haber al menos un "
+                    "precio de venta (unidad, blister o caja) mayor que 0."
+                )
 
         # Delegar al repositorio
         return self.repo.crear_producto(
