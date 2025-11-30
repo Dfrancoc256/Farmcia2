@@ -1,7 +1,7 @@
 # app/ui/web/main_sidebar.py
 import streamlit as st
 
-from app.ui.web.page_carrito import page_productos_carrito
+from app.ui.web.page_productos_carrito import page_productos_carrito
 from app.ui.web.page_inventario import page_inventario
 from app.ui.web.page_gastos import page_gastos
 from app.ui.web.pages_simple import page_config
