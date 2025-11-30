@@ -1,43 +1,43 @@
 # app/ui/web/page_carrito.py
+from datetime import date
+
 import pandas as pd
 import streamlit as st
 
 from app.services.ventas_service import VentasService
 
 
-def render_carrito_tab(
+def render_carrito_panel(
+    df_prods: pd.DataFrame,
     ventas_service: VentasService,
     id_usuario: int,
-    today,
 ) -> None:
-    """
-    Renderiza la pestaña de carrito:
-    - Añadir producto seleccionado al carrito
-    - Tabla de carrito
-    - Cálculo de total, pago y cambio
-    - Registro de venta(s)
-    """
+    """Sección de añadir al carrito + carrito actual + cobro."""
 
+    st.markdown("---")
     st.markdown(
         """
         <div class="carrito-card">
-            <div class="carrito-card-title">🛒 Carrito actual</div>
+            <div class="carrito-card-title">🛒 Añadir al carrito</div>
             <p class="carrito-card-sub">
                 Selecciona un producto del listado, define tipo de venta y cantidad
-                y agrégalo al carrito. Luego registra la venta.
+                y agrégalo al carrito actual.
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
+    if "carrito" not in st.session_state:
+        st.session_state["carrito"] = []
+
     prod_sel = st.session_state.get("prod_selected_full")
-    carrito = st.session_state.get("carrito", [])
+    carrito = st.session_state["carrito"]
 
     # -------- Añadir al carrito --------
     if not prod_sel:
         st.info(
-            "Selecciona un producto en la tabla de la izquierda para añadirlo al carrito."
+            "Selecciona un producto en la tabla de la parte superior izquierda para añadirlo al carrito."
         )
     else:
         st.text_input(
@@ -48,7 +48,7 @@ def render_carrito_tab(
 
         tipo = st.selectbox("Tipo de venta", ["unidad", "blister", "caja"])
         cantidad = st.number_input("Cantidad", min_value=1, value=1, step=1)
-        fecha = st.date_input("Fecha", value=today)
+        fecha = st.date_input("Fecha", value=date.today())
 
         precio_unidad = float(prod_sel.get("Unidad", 0) or 0)
         precio_blister = float(prod_sel.get("Blister", 0) or 0)
@@ -96,6 +96,18 @@ def render_carrito_tab(
             st.success("✅ Producto añadido al carrito.")
 
     # -------- Carrito actual + cobro --------
+    st.markdown(
+        """
+        <div class="carrito-card" style="margin-top:0.8rem;">
+            <div class="carrito-card-title">🧾 Carrito actual</div>
+            <p class="carrito-card-sub">
+                Revisa las líneas añadidas, elimina registros si es necesario y registra la venta.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     if carrito:
         df_cart = pd.DataFrame(carrito)
 

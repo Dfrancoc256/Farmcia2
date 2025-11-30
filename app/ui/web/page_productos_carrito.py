@@ -6,14 +6,10 @@ import streamlit as st
 
 from app.services.ventas_service import VentasService
 from app.services.productos_service import ProductosService
-from app.ui.web.page_productos import (
-    render_listado_productos,
-    render_registrar_producto_tab,
-    render_editar_producto_tab,
-)
-from app.ui.web.page_carrito import render_carrito_tab
+from app.ui.web.page_productos import render_productos_panel
+from app.ui.web.page_carrito import render_carrito_panel
 
-# Servicios (una sola instancia aquí)
+# Servicios globales
 ventas_service = VentasService()
 productos_service = ProductosService()
 
@@ -106,9 +102,6 @@ def page_productos_carrito():
         if msg:
             st.success(msg)
 
-    # =========================
-    #   SESSION STATE BÁSICO
-    # =========================
     if "carrito" not in st.session_state:
         st.session_state["carrito"] = []
 
@@ -142,45 +135,27 @@ def page_productos_carrito():
             ]
         )
 
-    # Aseguramos la columna Presentacion aunque el backend aún no la tenga
     if "Presentacion" not in df_prods.columns:
         df_prods["Presentacion"] = ""
 
     # =========================
-    #   LAYOUT PRINCIPAL
+    #   TABS: CARRITO / REGISTRAR / EDITAR
     # =========================
-    col_left, col_right = st.columns([2, 1])
+    tab_carrito, tab_reg, tab_edit = st.tabs(
+        ["🛒 Añadir al carrito", "➕ Registrar producto", "✏️ Editar / eliminar"]
+    )
 
-    # -------- IZQUIERDA: TABLA DE PRODUCTOS --------
-    with col_left:
-        render_listado_productos(df_prods)
+    # TAB CARRITO usa grid + carrito (el grid se pinta igual en panel productos)
+    with tab_carrito:
+        # Primero pintamos el panel de productos (tabla) sin los formularios de la derecha
+        render_productos_panel(df_prods, productos_service)
+        # Y al final el panel de carrito, que usa el producto seleccionado
+        render_carrito_panel(df_prods, ventas_service, id_usuario)
 
-    # -------- DERECHA: TABS (CARRITO + REGISTRO + EDICIÓN) --------
-    with col_right:
-        st.markdown(
-            """
-            <div class="carrito-card">
-                <div class="carrito-card-title">Producto / Carrito</div>
-                <p class="carrito-card-sub">
-                    Usa las pestañas para gestionar el carrito y administrar los productos.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    # TAB REGISTRAR / EDITAR reutilizan el mismo panel pero el usuario
+    # simplemente se posiciona en la pestaña que quiera:
+    with tab_reg:
+        render_productos_panel(df_prods, productos_service)
 
-        tab_carrito, tab_reg, tab_edit = st.tabs(
-            ["🛒 Añadir al carrito", "➕ Registrar producto", "✏️ Editar / eliminar"]
-        )
-
-        # TAB 1: CARRITO
-        with tab_carrito:
-            render_carrito_tab(ventas_service, id_usuario, date.today())
-
-        # TAB 2: REGISTRAR PRODUCTO
-        with tab_reg:
-            render_registrar_producto_tab(productos_service)
-
-        # TAB 3: EDITAR / ELIMINAR
-        with tab_edit:
-            render_editar_producto_tab(df_prods, productos_service)
+    with tab_edit:
+        render_productos_panel(df_prods, productos_service)
