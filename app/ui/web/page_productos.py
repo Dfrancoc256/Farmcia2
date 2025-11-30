@@ -11,7 +11,7 @@ PRESENTACION_OPCIONES = [
     "Gotero",
     "Pastilla",
     "Tableta",
-    "Tomado",
+    "Toma",
     "Pomada",
     "Crema",
     "Otros",  # <- esta abre el campo para escribir
@@ -101,7 +101,7 @@ def render_listado_productos(df_prods: pd.DataFrame) -> None:
         grid_response = AgGrid(
             df_view[columnas_grid],
             gridOptions=grid_options,
-            height=480,  # antes 360
+            height=600,  # antes 360
             update_mode=GridUpdateMode.SELECTION_CHANGED,
             allow_unsafe_jscode=True,
             theme="alpine",
