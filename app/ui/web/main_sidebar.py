@@ -1,16 +1,12 @@
 # app/ui/web/main_sidebar.py
 import streamlit as st
 
-import streamlit as st
-
-from app.ui.web.page_productos import page_productos
-from app.ui.web.page_carrito import page_carrito
+from app.ui.web.page_carrito import page_productos_carrito
 from app.ui.web.page_inventario import page_inventario
 from app.ui.web.page_gastos import page_gastos
 from app.ui.web.pages_simple import page_config
 from app.ui.web.page_fiados import page_fiados
 from app.ui.web.page_inicio import page_inicio
-
 
 # Paleta
 PRIMARY = "#2563EB"
@@ -192,7 +188,7 @@ def render_main_app():
     if menu.startswith("🏠"):
         page_inicio()
     elif menu.startswith("📦"):
-        page_productos()
+        page_productos_carrito()
     elif menu.startswith("📈"):
         page_inventario()
     elif menu.startswith("🧾"):

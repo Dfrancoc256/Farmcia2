@@ -63,7 +63,8 @@ def render_productos_panel(
                         .astype(str)
                         .str.contains(term, case=False, na=False)
                         | df_prods.get(
-                            "Detalle", pd.Series("", index=df_prods.index)
+                            "Detalle",
+                            pd.Series("", index=df_prods.index),
                         )
                         .astype(str)
                         .str.contains(term, case=False, na=False)
@@ -242,6 +243,9 @@ def render_productos_panel(
                 )
 
             if submitted_reg:
+                # ==============================
+                #  VALIDACIÓN EN LA UI
+                # ==============================
                 precios_venta = [
                     precio_unidad_reg,
                     precio_blister_reg,
@@ -249,6 +253,7 @@ def render_productos_panel(
                 ]
                 precios_venta_positivos = [p for p in precios_venta if p > 0]
 
+                # Si hay precio de compra, debe haber al menos un precio de venta
                 if precio_compra_reg > 0 and not precios_venta_positivos:
                     st.error(
                         "Si existe un precio de compra, debe haber al menos un "
@@ -286,6 +291,7 @@ def render_productos_panel(
         #   TAB 2: EDITAR / ELIMINAR
         # ==================================================
         with tab_edit:
+            # Sincronizamos SOLO cuando cambia el producto seleccionado
             if prod_sel:
                 current_id = int(prod_sel.get("id"))
                 last_id = st.session_state.get("edit_id")
@@ -293,16 +299,19 @@ def render_productos_panel(
                 if current_id != last_id:
                     st.session_state["edit_id"] = current_id
 
+                    # Tomamos la fila actualizada desde df_prods usando el id
                     row_df = df_prods[df_prods["id"] == current_id]
                     if not row_df.empty:
                         row = row_df.iloc[0]
                     else:
+                        # Fallback por seguridad
                         row = pd.Series(prod_sel)
 
                     st.session_state["edit_nombre"] = row.get("Nombre", "") or ""
                     st.session_state["edit_detalle"] = row.get("Detalle", "") or ""
                     st.session_state["edit_categoria"] = row.get("Categoria", "") or ""
 
+                    # Presentación
                     presentacion_valor = row.get("Presentacion", "") or ""
                     if (
                         presentacion_valor in PRESENTACION_OPCIONES
@@ -327,17 +336,20 @@ def render_productos_panel(
                         row.get("Caja", 0.0) or 0.0
                     )
 
+                    # Unidades por blister (manejar None/NaN)
                     unidades_val = row.get("UnidadesBlister", 0)
                     if unidades_val is None or pd.isna(unidades_val):
                         unidades_val = 0
                     st.session_state["edit_unidades_blister"] = int(unidades_val)
 
+                    # Stock actual (manejar None/NaN)
                     stock_val = row.get("StockUnidades", 0)
                     if stock_val is None or pd.isna(stock_val):
                         stock_val = 0
                     stock_actual = int(stock_val)
 
                     st.session_state["edit_stock_unidades"] = stock_actual
+                    # Punto de referencia para futuros ajustes
                     st.session_state["edit_stock_original"] = stock_actual
 
             with st.form("form_edit_producto"):
@@ -345,6 +357,7 @@ def render_productos_panel(
                     "Nombre del producto", key="edit_nombre"
                 )
 
+                # Presentación (lista + otro)
                 presentacion_opcion_edit = st.selectbox(
                     "Presentación",
                     PRESENTACION_OPCIONES,
@@ -433,6 +446,7 @@ def render_productos_panel(
                     st.warning("Selecciona un producto en la tabla para editarlo.")
                 else:
                     try:
+                        # 1) Actualizamos datos generales del producto (sin stock)
                         productos_service.update_producto_completo(
                             pid=pid_edicion,
                             nombre=nombre_edit,
@@ -454,6 +468,7 @@ def render_productos_panel(
                             precio_caja=precio_caja_edit,
                         )
 
+                        # 2) Ajustamos stock si cambió
                         stock_original = st.session_state.get(
                             "edit_stock_original", stock_actual_edit
                         )
