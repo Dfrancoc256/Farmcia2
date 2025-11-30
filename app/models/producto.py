@@ -20,6 +20,8 @@ class Producto(BaseModel):
     stock_unidades: int
     stock_actual: int
     precio_venta_caja: float
+
     # Nuevos campos opcionales (no rompen llamadas existentes)
     detalle: Optional[str] = None
     categoria: Optional[str] = None
+    presentacion: Optional[str] = None  # Jarabe / Gotero / Tableta / Otro, etc.

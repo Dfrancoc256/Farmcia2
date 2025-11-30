@@ -24,13 +24,30 @@ class ProductosService:
         return self.repo.listar_activos()
 
     def buscar_activos(self, q: str) -> List[Producto]:
-        """Búsqueda simple por nombre (se puede mejorar después)."""
+        """
+        Búsqueda simple mejorada:
+        - Busca en nombre, detalle, categoría y presentación.
+        """
         q = (q or "").strip().lower()
         if not q:
             return self.repo.listar_activos()
 
         productos = self.repo.listar_activos()
-        return [p for p in productos if q in p.nombre.lower()]
+        resultado: List[Producto] = []
+
+        for p in productos:
+            texto = " ".join(
+                [
+                    p.nombre or "",
+                    p.detalle or "",
+                    p.categoria or "",
+                    getattr(p, "presentacion", "") or "",
+                ]
+            ).lower()
+            if q in texto:
+                resultado.append(p)
+
+        return resultado
 
     # ==========================================================
     #   OBTENER UNO
@@ -46,27 +63,30 @@ class ProductosService:
     #   CREAR PRODUCTO (LÓGICA)
     # ==========================================================
     def crear_producto(
-            self,
-            nombre: str,
-            detalle: Optional[str],
-            precio_compra: float,
-            precio_venta_unidad: float,
-            precio_venta_blister: Optional[float],
-            stock_unidades: int,
-            categoria: Optional[str],
-            unidades_por_blister: Optional[int],
-            precio_venta_caja: float,
+        self,
+        nombre: str,
+        detalle: Optional[str],
+        presentacion: Optional[str],
+        precio_compra: float,
+        precio_venta_unidad: float,
+        precio_venta_blister: Optional[float],
+        stock_unidades: int,
+        categoria: Optional[str],
+        unidades_por_blister: Optional[int],
+        precio_venta_caja: float,
     ) -> int:
         """
         Valida datos y delega al repo la creación del producto.
-        Regla nueva:
+
+        Reglas:
         - Si hay precio de compra (>0), debe existir al menos
           un precio de venta (unidad, blister o caja) > 0.
-        YA NO se exige que el precio de venta sea mayor al de compra.
+        - NO se exige que el precio de venta sea mayor al de compra.
         """
 
         nombre = (nombre or "").strip()
         detalle = (detalle or "").strip() or None
+        presentacion = (presentacion or "").strip() or None
         categoria = (categoria or "").strip() or None
 
         # ---------- Validaciones básicas ----------
@@ -102,7 +122,7 @@ class ProductosService:
         if unidades_por_blister is not None and unidades_por_blister < 0:
             raise ValueError("Las unidades por blister no pueden ser negativas.")
 
-        # ---------- NUEVA REGLA ----------
+        # ---------- REGLA NUEVA (creación) ----------
         # Si hay precio de compra (>0), tiene que haber al menos
         # UN precio de venta > 0 (unidad, blister o caja)
         if precio_compra > 0:
@@ -123,6 +143,7 @@ class ProductosService:
         return self.repo.crear_producto(
             nombre=nombre,
             detalle=detalle,
+            presentacion=presentacion,
             precio_compra=precio_compra,
             precio_venta_unidad=precio_venta_unidad,
             precio_venta_blister=precio_venta_blister,
@@ -154,16 +175,21 @@ class ProductosService:
         if precio_caja < 0:
             raise ValueError("Precio por caja inválido (no puede ser negativo).")
 
-        max_precio_venta = max(
-            precio_unidad or 0.0,
-            precio_blister or 0.0,
-            precio_caja or 0.0,
-        )
-        if max_precio_venta <= precio_compra:
-            raise ValueError(
-                "Debe existir al menos un precio de venta (unidad, blister o caja) "
-                "mayor al precio de compra."
+        # ---------- REGLA NUEVA (actualización precios) ----------
+        # Si hay precio de compra (>0), debe existir al menos un precio de venta > 0
+        if precio_compra > 0:
+            hay_precio_venta = any(
+                [
+                    precio_unidad > 0,
+                    (precio_blister or 0) > 0,
+                    precio_caja > 0,
+                ]
             )
+            if not hay_precio_venta:
+                raise ValueError(
+                    "Si existe un precio de compra, debe haber al menos un "
+                    "precio de venta (unidad, blister o caja) mayor que 0."
+                )
 
         self.repo.update_precios(
             pid,
@@ -199,6 +225,7 @@ class ProductosService:
         pid: int,
         nombre: str,
         detalle: Optional[str],
+        presentacion: Optional[str],
         precio_compra: float,
         precio_venta_unidad: float,
         precio_venta_blister: Optional[float],
@@ -212,6 +239,7 @@ class ProductosService:
         """
         nombre = (nombre or "").strip()
         detalle = (detalle or "").strip() or None
+        presentacion = (presentacion or "").strip() or None
         categoria = (categoria or "").strip() or None
 
         if not nombre:
@@ -238,21 +266,26 @@ class ProductosService:
         if unidades_por_blister is not None and unidades_por_blister < 0:
             raise ValueError("Las unidades por blister no pueden ser negativas.")
 
-        max_precio_venta = max(
-            precio_venta_unidad or 0.0,
-            precio_venta_blister or 0.0,
-            precio_venta_caja or 0.0,
-        )
-        if max_precio_venta <= precio_compra:
-            raise ValueError(
-                "Debe existir al menos un precio de venta (unidad, blister o caja) "
-                "mayor al precio de compra."
+        # ---------- REGLA NUEVA (actualizar producto completo) ----------
+        if precio_compra > 0:
+            hay_precio_venta = any(
+                [
+                    precio_venta_unidad > 0,
+                    (precio_venta_blister or 0) > 0,
+                    precio_venta_caja > 0,
+                ]
             )
+            if not hay_precio_venta:
+                raise ValueError(
+                    "Si existe un precio de compra, debe haber al menos un "
+                    "precio de venta (unidad, blister o caja) mayor que 0."
+                )
 
         self.repo.update_producto(
             pid=pid,
             nombre=nombre,
             detalle=detalle,
+            presentacion=presentacion,
             precio_compra=precio_compra,
             precio_venta_unidad=precio_venta_unidad,
             precio_venta_blister=precio_venta_blister,
@@ -267,17 +300,19 @@ class ProductosService:
         pid: int,
         nombre: str,
         detalle: Optional[str],
+        presentacion: Optional[str],
+        categoria: Optional[str],
         precio_compra: float,
         precio_unidad: float,
         precio_blister: Optional[float],
-        categoria: Optional[str],
         unidades_blister: Optional[int] = None,
         unidades_por_blister: Optional[int] = None,
         precio_caja: float = 0.0,
     ) -> None:
         """
         Alias para mantener compatibilidad con la llamada que hace page_carrito.py,
-        que usa los nombres 'precio_unidad', 'precio_blister' y 'unidades_blister'.
+        que usa los nombres 'precio_unidad', 'precio_blister' y 'unidades_blister',
+        y ahora también maneja 'presentacion'.
         """
         if unidades_por_blister is None:
             unidades_por_blister = unidades_blister
@@ -286,6 +321,7 @@ class ProductosService:
             pid=pid,
             nombre=nombre,
             detalle=detalle,
+            presentacion=presentacion,
             precio_compra=precio_compra,
             precio_venta_unidad=precio_unidad,
             precio_venta_blister=precio_blister,

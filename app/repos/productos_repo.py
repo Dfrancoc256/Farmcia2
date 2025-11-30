@@ -30,6 +30,7 @@ class ProductosRepo:
                         id,
                         nombre,
                         detalle,
+                        presentacion,
                         precio_compra::double precision        AS compra,
                         precio_venta_unidad::double precision  AS unidad,
                         precio_venta_blister::double precision AS blister,
@@ -54,15 +55,16 @@ class ProductosRepo:
                 Producto(
                     id=int(r[0]),
                     nombre=r[1],
-                    precio_compra=float(r[3]),
-                    precio_venta_unidad=float(r[4]),
-                    precio_venta_blister=float(r[5]) if r[5] is not None else None,
-                    unidades_por_blister=int(r[6] or 1),
-                    stock_unidades=int(r[7] or 0),
-                    stock_actual=int(r[8] or 0),
-                    precio_venta_caja=float(r[9]),
+                    precio_compra=float(r[4]),
+                    precio_venta_unidad=float(r[5]),
+                    precio_venta_blister=float(r[6]) if r[6] is not None else None,
+                    unidades_por_blister=int(r[7] or 1),
+                    stock_unidades=int(r[8] or 0),
+                    stock_actual=int(r[9] or 0),
+                    precio_venta_caja=float(r[10]),
                     detalle=r[2],
-                    categoria=r[10],
+                    categoria=r[11],
+                    presentacion=r[3],
                 )
             )
         return productos
@@ -74,6 +76,7 @@ class ProductosRepo:
         self,
         nombre: str,
         detalle: Optional[str],
+        presentacion: Optional[str],
         precio_compra: float,
         precio_venta_unidad: float,
         precio_venta_blister: Optional[float],
@@ -93,6 +96,7 @@ class ProductosRepo:
             INSERT INTO public.productos(
                 nombre,
                 detalle,
+                presentacion,
                 precio_compra,
                 precio_venta_unidad,
                 precio_venta_blister,
@@ -104,7 +108,7 @@ class ProductosRepo:
                 unidades_por_blister,
                 precio_venta_caja
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), %s, %s)
             RETURNING id;
         """
 
@@ -115,6 +119,7 @@ class ProductosRepo:
                     (
                         nombre,
                         detalle,
+                        presentacion,
                         float(precio_compra),
                         float(precio_venta_unidad),
                         float(precio_venta_blister)
@@ -261,6 +266,7 @@ class ProductosRepo:
         pid: int,
         nombre: str,
         detalle: Optional[str],
+        presentacion: Optional[str],
         precio_compra: float,
         precio_venta_unidad: float,
         precio_venta_blister: Optional[float],
@@ -280,6 +286,7 @@ class ProductosRepo:
             UPDATE public.productos
             SET nombre               = %s,
                 detalle              = %s,
+                presentacion         = %s,
                 precio_compra        = %s,
                 precio_venta_unidad  = %s,
                 precio_venta_blister = %s,
@@ -296,6 +303,7 @@ class ProductosRepo:
                     (
                         nombre,
                         detalle,
+                        presentacion,
                         float(precio_compra),
                         float(precio_venta_unidad),
                         float(precio_venta_blister)
