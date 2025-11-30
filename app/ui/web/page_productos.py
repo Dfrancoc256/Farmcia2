@@ -1,20 +1,18 @@
+# app/ui/web/page_productos.py
 import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 from app.services.productos_service import ProductosService
 
-# Opciones de presentación (lista fija)
+# Opciones de presentación
 PRESENTACION_OPCIONES = [
-    "Capsula",
-    "Frasco",
-    "Ampolla",
-    "Bebible",
-    "Bolsa",
     "Jarabe",
     "Gotero",
+    "Pastilla",
     "Tableta",
-    "Otro",  # cuando es "Otro" se usa el campo de texto
+    "Tomado",
+    "Otros",  # <- esta abre el campo para escribir
 ]
 
 
@@ -45,44 +43,45 @@ def render_listado_productos(df_prods: pd.DataFrame) -> None:
 
     df_view = df_prods.copy()
 
-    # Aseguramos que la columna Presentacion tenga lo que viene de la BD
-    if "Presentacion" not in df_view.columns:
-        if "presentacion" in df_view.columns:
-            df_view["Presentacion"] = df_view["presentacion"]
-        else:
-            df_view["Presentacion"] = ""
-
     # ----- BÚSQUEDA: nombre + detalle + categoría + presentación -----
     if q:
         terms = [t.strip() for t in q.split() if t.strip()]
         if terms:
-            mask = pd.Series(False, index=df_view.index)
+            mask = pd.Series(False, index=df_prods.index)
 
             for term in terms:
                 term_mask = (
-                    df_view["Nombre"]
+                    df_prods["Nombre"]
                     .astype(str)
                     .str.contains(term, case=False, na=False)
-                    | df_view.get("Detalle", pd.Series("", index=df_view.index))
+                    | df_prods.get(
+                        "Detalle", pd.Series("", index=df_prods.index)
+                    )
                     .astype(str)
                     .str.contains(term, case=False, na=False)
-                    | df_view.get("Categoria", pd.Series("", index=df_view.index))
+                    | df_prods.get(
+                        "Categoria", pd.Series("", index=df_prods.index)
+                    )
                     .astype(str)
                     .str.contains(term, case=False, na=False)
-                    | df_view.get("Presentacion", pd.Series("", index=df_view.index))
+                    | df_prods.get(
+                        "Presentacion", pd.Series("", index=df_prods.index)
+                    )
                     .astype(str)
                     .str.contains(term, case=False, na=False)
                 )
                 mask = mask | term_mask
 
-            df_view = df_view[mask]
+            df_view = df_prods[mask]
+        else:
+            df_view = df_prods.copy()
 
     prod_sel_dict = None
 
     if not df_view.empty:
         columnas_grid = [
             "Nombre",
-            "Presentacion",  # <-- entre Nombre y Detalle
+            "Presentacion",
             "Detalle",
             "Compra",
             "Unidad",
@@ -96,11 +95,11 @@ def render_listado_productos(df_prods: pd.DataFrame) -> None:
         gb.configure_grid_options(domLayout="normal")
         grid_options = gb.build()
 
-        # Altura un poco mayor para aprovechar el espacio vertical
+        # Aumentamos altura (más espacio hacia abajo)
         grid_response = AgGrid(
             df_view[columnas_grid],
             gridOptions=grid_options,
-            height=460,
+            height=480,  # antes 360
             update_mode=GridUpdateMode.SELECTION_CHANGED,
             allow_unsafe_jscode=True,
             theme="alpine",
@@ -111,12 +110,12 @@ def render_listado_productos(df_prods: pd.DataFrame) -> None:
         if isinstance(selected_rows, list) and selected_rows:
             selected_name = selected_rows[0].get("Nombre")
             if selected_name:
-                matches = df_view[df_view["Nombre"] == selected_name]
+                matches = df_prods[df_prods["Nombre"] == selected_name]
                 if not matches.empty:
                     prod_sel_dict = matches.iloc[0].to_dict()
         elif isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
             selected_name = selected_rows.iloc[0].get("Nombre")
-            matches = df_view[df_view["Nombre"] == selected_name]
+            matches = df_prods[df_prods["Nombre"] == selected_name]
             if not matches.empty:
                 prod_sel_dict = matches.iloc[0].to_dict()
 
@@ -130,46 +129,6 @@ def render_listado_productos(df_prods: pd.DataFrame) -> None:
         st.session_state["prod_selected_full"] = None
 
 
-def _presentacion_selector(prefix: str, valor_inicial: str | None = None) -> str:
-    """
-    Helper para manejar la presentación con:
-    - Lista fija de opciones
-    - Opción 'Otro' que permite escribir en un campo de texto.
-
-    prefix: 'reg' o 'edit' para diferenciar las keys.
-    valor_inicial: valor que viene de la BD para preseleccionar.
-    """
-    # Si el valor inicial está en la lista, lo usamos tal cual; si no, se trata como "Otro"
-    if valor_inicial and valor_inicial in PRESENTACION_OPCIONES and valor_inicial != "Otro":
-        opcion_default = valor_inicial
-        texto_default = ""
-    elif valor_inicial and valor_inicial not in (None, "", "Otro"):
-        opcion_default = "Otro"
-        texto_default = valor_inicial
-    else:
-        opcion_default = PRESENTACION_OPCIONES[0]
-        texto_default = ""
-
-    opcion = st.selectbox(
-        "Presentación",
-        PRESENTACION_OPCIONES,
-        index=PRESENTACION_OPCIONES.index(opcion_default),
-        key=f"{prefix}_presentacion_opcion",
-    )
-
-    if opcion == "Otro":
-        texto = st.text_input(
-            "Escribe la presentación",
-            value=texto_default,
-            key=f"{prefix}_presentacion_otro",
-        )
-        return texto.strip()
-    else:
-        # Limpiamos cualquier valor anterior del texto libre, solo por orden
-        st.session_state[f"{prefix}_presentacion_otro"] = ""
-        return opcion
-
-
 def render_registrar_producto_tab(productos_service: ProductosService) -> None:
     """
     Renderiza la pestaña de registro de producto.
@@ -177,8 +136,23 @@ def render_registrar_producto_tab(productos_service: ProductosService) -> None:
     with st.form("form_reg_producto"):
         nombre_reg = st.text_input("Nombre del producto", key="reg_nombre")
 
-        # Presentación con lista + 'Otro' editable
-        presentacion_final_reg = _presentacion_selector(prefix="reg")
+        # Presentación (lista + opción 'Otros' que permite escribir)
+        presentacion_opcion_reg = st.selectbox(
+            "Presentación",
+            PRESENTACION_OPCIONES,
+            key="reg_presentacion_opcion",
+        )
+        presentacion_otro_reg = ""
+        if presentacion_opcion_reg == "Otros":
+            presentacion_otro_reg = st.text_input(
+                "Especifique otra presentación",
+                key="reg_presentacion_otro",
+            )
+        presentacion_final_reg = (
+            presentacion_otro_reg.strip()
+            if presentacion_opcion_reg == "Otros"
+            else presentacion_opcion_reg
+        )
 
         detalle_reg = st.text_input("Detalle / descripción", key="reg_detalle")
         categoria_reg = st.text_input(
@@ -301,10 +275,17 @@ def render_editar_producto_tab(
             st.session_state["edit_detalle"] = row.get("Detalle", "") or ""
             st.session_state["edit_categoria"] = row.get("Categoria", "") or ""
 
-            # Presentación (valor inicial para el helper)
-            st.session_state["edit_presentacion_valor"] = (
-                row.get("Presentacion", "") or ""
-            )
+            # Presentación
+            presentacion_valor = row.get("Presentacion", "") or ""
+            if (
+                presentacion_valor in PRESENTACION_OPCIONES
+                and presentacion_valor != "Otros"
+            ):
+                st.session_state["edit_presentacion_opcion"] = presentacion_valor
+                st.session_state["edit_presentacion_otro"] = ""
+            else:
+                st.session_state["edit_presentacion_opcion"] = "Otros"
+                st.session_state["edit_presentacion_otro"] = presentacion_valor
 
             st.session_state["edit_precio_compra"] = float(
                 row.get("Compra", 0.0) or 0.0
@@ -315,7 +296,9 @@ def render_editar_producto_tab(
             st.session_state["edit_precio_blister"] = float(
                 row.get("Blister", 0.0) or 0.0
             )
-            st.session_state["edit_precio_caja"] = float(row.get("Caja", 0.0) or 0.0)
+            st.session_state["edit_precio_caja"] = float(
+                row.get("Caja", 0.0) or 0.0
+            )
 
             # Unidades por blister
             unidades_val = row.get("UnidadesBlister", 0)
@@ -335,11 +318,21 @@ def render_editar_producto_tab(
     with st.form("form_edit_producto"):
         nombre_edit = st.text_input("Nombre del producto", key="edit_nombre")
 
-        presentacion_valor_inicial = st.session_state.get(
-            "edit_presentacion_valor", ""
+        presentacion_opcion_edit = st.selectbox(
+            "Presentación",
+            PRESENTACION_OPCIONES,
+            key="edit_presentacion_opcion",
         )
-        presentacion_final_edit = _presentacion_selector(
-            prefix="edit", valor_inicial=presentacion_valor_inicial
+        presentacion_otro_edit = ""
+        if presentacion_opcion_edit == "Otros":
+            presentacion_otro_edit = st.text_input(
+                "Especifique otra presentación",
+                key="edit_presentacion_otro",
+            )
+        presentacion_final_edit = (
+            presentacion_otro_edit.strip()
+            if presentacion_opcion_edit == "Otros"
+            else presentacion_opcion_edit
         )
 
         detalle_edit = st.text_input("Detalle / descripción", key="edit_detalle")

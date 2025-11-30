@@ -25,10 +25,12 @@ class VentasService:
     def get_productos_activos_df(self) -> pd.DataFrame:
         productos = self.productos_repo.listar_activos()
         if not productos:
+            # IMPORTANTE: incluir también la columna Presentacion
             return pd.DataFrame(
                 columns=[
                     "id",
                     "Nombre",
+                    "Presentacion",
                     "Detalle",
                     "Compra",
                     "Unidad",
@@ -46,6 +48,8 @@ class VentasService:
                 {
                     "id": p.id,
                     "Nombre": p.nombre,
+                    # <- viene directo del repo / BD
+                    "Presentacion": getattr(p, "presentacion", None),
                     "Detalle": getattr(p, "detalle", None),
                     "Compra": p.precio_compra,
                     "Unidad": p.precio_venta_unidad,
