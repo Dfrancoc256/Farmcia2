@@ -1,4 +1,3 @@
-# app/ui/web/page_productos_carrito.py
 from datetime import date
 
 import pandas as pd
@@ -142,10 +141,9 @@ def page_productos_carrito():
             ]
         )
 
-    # Aseguramos la columna Presentacion aunque el backend aún no la tenga
+    # Aseguramos la columna Presentacion usando lo que venga de la BD
     if "Presentacion" not in df_prods.columns:
         if "presentacion" in df_prods.columns:
-            # usamos la columna que viene del servicio / SQL
             df_prods["Presentacion"] = df_prods["presentacion"]
         else:
             df_prods["Presentacion"] = ""

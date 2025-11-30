@@ -1,4 +1,3 @@
-# app/ui/web/page_carrito.py
 import pandas as pd
 import streamlit as st
 
@@ -132,18 +131,18 @@ def render_carrito_tab(
 
         col_a, col_b = st.columns(2)
 
-        # Eliminar ítem del carrito (por selección, ya no por índice)
+        # Eliminar ítem del carrito SELECCIONANDO PRODUCTO
         with col_a:
-            opciones_del = [
-                f"{i+1}. {item['nombre']} ({item['tipo']}) - Q {item['monto']:.2f}"
+            opciones_eliminar = [
+                f"{i + 1}. {item['nombre']} ({item['tipo']}) - Q {item['monto']:.2f}"
                 for i, item in enumerate(carrito)
             ]
 
             idx_sel = st.selectbox(
                 "Producto a eliminar",
                 options=list(range(len(carrito))),
-                format_func=lambda i: opciones_del[i],
-                key="idx_del_cart",
+                format_func=lambda i: opciones_eliminar[i],
+                key="carrito_item_a_eliminar",
             )
 
             if st.button("Eliminar del carrito"):
