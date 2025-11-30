@@ -12,6 +12,8 @@ PRESENTACION_OPCIONES = [
     "Pastilla",
     "Tableta",
     "Tomado",
+    "Pomada",
+    "Crema",
     "Otros",  # <- esta abre el campo para escribir
 ]
 
