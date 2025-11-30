@@ -10,8 +10,8 @@ PRESENTACION_OPCIONES = [
     "Jarabe",
     "Ampolla",
     "Gotero",
-    "Pastilla",
-    "Tableta",
+    "Capsulas",
+    "Tabletas",
     "Tomado",
     "Pomada/Crema",
     "Otros",  # <- esta abre el campo para escribir
