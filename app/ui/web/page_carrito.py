@@ -1,7 +1,6 @@
 # app/ui/web/page_carrito.py
 import pandas as pd
 import streamlit as st
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 from app.services.ventas_service import VentasService
 
@@ -14,7 +13,7 @@ def render_carrito_tab(
     """
     Renderiza la pestaña de carrito:
     - Añadir producto seleccionado al carrito
-    - Tabla de carrito con selección de fila
+    - Mostrar carrito en tabla simple
     - Cálculo de total, pago y cambio
     - Registro de venta(s)
     """
@@ -100,42 +99,14 @@ def render_carrito_tab(
     if carrito:
         df_cart = pd.DataFrame(carrito)
 
-        # Preparamos dataframe para mostrar en AgGrid
         df_cart_disp = df_cart.copy()
         df_cart_disp["Monto"] = df_cart_disp["monto"]
         df_cart_disp["Cant"] = df_cart_disp["cantidad"]
         df_cart_disp = df_cart_disp[["nombre", "tipo", "Cant", "Monto", "fecha"]]
         df_cart_disp.columns = ["Producto", "Tipo", "Cant", "Monto", "Fecha"]
 
-        # Agregamos un índice visible para el usuario (1..N)
-        df_cart_disp.insert(0, "#", range(1, len(df_cart_disp) + 1))
-
         st.write("### Productos en el carrito")
-
-        # === Tabla con selección de fila ===
-        gb = GridOptionsBuilder.from_dataframe(df_cart_disp)
-        gb.configure_selection("single", use_checkbox=True)
-        gb.configure_grid_options(domLayout="normal")
-        grid_options = gb.build()
-
-        grid_response = AgGrid(
-            df_cart_disp,
-            gridOptions=grid_options,
-            height=260,
-            update_mode=GridUpdateMode.SELECTION_CHANGED,
-            allow_unsafe_jscode=True,
-            theme="alpine",
-            key="carrito_grid",
-        )
-
-        selected_rows = grid_response["selected_rows"]
-
-        # Guardamos el índice seleccionado en session_state
-        if isinstance(selected_rows, list) and selected_rows:
-            # El índice real en la lista "carrito" es (# - 1)
-            selected_pos = int(selected_rows[0].get("#", 0)) - 1
-            if 0 <= selected_pos < len(carrito):
-                st.session_state["cart_selected_idx"] = selected_pos
+        st.dataframe(df_cart_disp, use_container_width=True, hide_index=True)
 
         # Total del carrito
         total = sum(i["monto"] for i in carrito)
@@ -162,23 +133,34 @@ def render_carrito_tab(
 
         col_a, col_b = st.columns(2)
 
-        # Eliminar ítem del carrito usando la fila seleccionada
+        # -------- Eliminar producto seleccionándolo por nombre --------
         with col_a:
-            st.write("#### Eliminar producto seleccionado")
+            st.write("#### Producto a eliminar")
+
+            # Creamos las opciones legibles (1. Nombre (tipo) - Q monto)
+            opciones = [
+                f"{i+1}. {item['nombre']} ({item['tipo']}) - Q {item['monto']:.2f}"
+                for i, item in enumerate(carrito)
+            ]
+
+            # Usamos el índice real del carrito como valor
+            idx_sel = st.selectbox(
+                "Selecciona un producto",
+                options=list(range(len(carrito))),
+                format_func=lambda i: opciones[i],
+                key="carrito_sel_eliminar",
+            )
+
             if st.button("Eliminar del carrito", use_container_width=True):
-                idx_sel = st.session_state.get("cart_selected_idx")
                 if idx_sel is None or not (0 <= idx_sel < len(carrito)):
-                    st.warning(
-                        "Selecciona primero un producto en la tabla para eliminarlo."
-                    )
+                    st.warning("Selecciona un producto válido para eliminar.")
                 else:
                     carrito.pop(idx_sel)
                     st.session_state["carrito"] = carrito
-                    # Limpiamos la selección
-                    st.session_state["cart_selected_idx"] = None
+                    st.success("🗑️ Producto eliminado del carrito.")
                     st.rerun()
 
-        # Registrar venta(s)
+        # -------- Registrar venta(s) --------
         with col_b:
             if st.button("Registrar venta(s)", type="primary", use_container_width=True):
                 if monto_pagado < total:
@@ -195,7 +177,6 @@ def render_carrito_tab(
                         st.error(f"❌ Ocurrió un error al registrar la venta: {e}")
                     else:
                         st.session_state["carrito"] = []
-                        st.session_state["cart_selected_idx"] = None
 
                         if cambio is None:
                             cambio = max(monto_pagado - total, 0.0)
