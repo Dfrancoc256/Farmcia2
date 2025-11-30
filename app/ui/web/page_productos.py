@@ -8,6 +8,7 @@ from app.services.productos_service import ProductosService
 # Opciones de presentación
 PRESENTACION_OPCIONES = [
     "Jarabe",
+    "Ampolla",
     "Gotero",
     "Pastilla",
     "Tableta",
