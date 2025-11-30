@@ -132,17 +132,22 @@ def render_carrito_tab(
 
         col_a, col_b = st.columns(2)
 
-        # Eliminar ítem del carrito
+        # Eliminar ítem del carrito (por selección, ya no por índice)
         with col_a:
-            idx_del = st.number_input(
-                "Índice a eliminar (1..N)",
-                min_value=1,
-                max_value=len(carrito),
-                step=1,
+            opciones_del = [
+                f"{i+1}. {item['nombre']} ({item['tipo']}) - Q {item['monto']:.2f}"
+                for i, item in enumerate(carrito)
+            ]
+
+            idx_sel = st.selectbox(
+                "Producto a eliminar",
+                options=list(range(len(carrito))),
+                format_func=lambda i: opciones_del[i],
                 key="idx_del_cart",
             )
+
             if st.button("Eliminar del carrito"):
-                carrito.pop(idx_del - 1)
+                carrito.pop(idx_sel)
                 st.session_state["carrito"] = carrito
                 st.rerun()
 

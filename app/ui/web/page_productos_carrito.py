@@ -144,7 +144,11 @@ def page_productos_carrito():
 
     # Aseguramos la columna Presentacion aunque el backend aún no la tenga
     if "Presentacion" not in df_prods.columns:
-        df_prods["Presentacion"] = ""
+        if "presentacion" in df_prods.columns:
+            # usamos la columna que viene del servicio / SQL
+            df_prods["Presentacion"] = df_prods["presentacion"]
+        else:
+            df_prods["Presentacion"] = ""
 
     # =========================
     #   LAYOUT PRINCIPAL
@@ -162,7 +166,7 @@ def page_productos_carrito():
             <div class="carrito-card">
                 <div class="carrito-card-title">Producto / Carrito</div>
                 <p class="carrito-card-sub">
-                    Usa las pestañas para gestionar el carrito y administrar los productos.
+                    Utilice las pestañas para gestionar el carrito y administrar los productos.
                 </p>
             </div>
             """,
