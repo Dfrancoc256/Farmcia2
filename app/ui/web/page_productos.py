@@ -11,9 +11,8 @@ PRESENTACION_OPCIONES = [
     "Gotero",
     "Pastilla",
     "Tableta",
-    "Toma",
-    "Pomada",
-    "Crema",
+    "Tomado",
+    "Pomada/Crema",
     "Otros",  # <- esta abre el campo para escribir
 ]
 
