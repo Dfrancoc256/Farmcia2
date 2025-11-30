@@ -6,11 +6,14 @@ from app.services.productos_service import ProductosService
 
 # Opciones de presentación (lista fija)
 PRESENTACION_OPCIONES = [
+    "Capsula",
+    "Frasco",
+    "Ampolla",
+    "Bebible",
+    "Bolsa",
     "Jarabe",
     "Gotero",
-    "Pastilla",
     "Tableta",
-    "Tomado",
     "Otro",  # cuando es "Otro" se usa el campo de texto
 ]
 
